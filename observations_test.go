@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -308,24 +307,6 @@ func TestParseObservationsUsesPerLocationZones(t *testing.T) {
 		if obs[i].CommonName != want {
 			t.Errorf("obs[%d] = %q, want %q", i, obs[i].CommonName, want)
 		}
-	}
-}
-
-// Every row of a checklist shares its coordinates, so the finder is consulted
-// once per location, not once per row.
-func TestParseObservationsCachesZoneLookups(t *testing.T) {
-	row := "S1,Bird %d,Aves %d,1,1,US-MI,Wayne,L1,Belle Isle,42.34,-82.98,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n"
-	csv := sampleHeader
-	for i := range 5 {
-		csv += fmt.Sprintf(row, i, i)
-	}
-
-	inner := &staticZoneFinder{loc: time.UTC}
-	if _, err := parseObservations(strings.NewReader(csv), newCachingZoneFinder(inner), time.UTC); err != nil {
-		t.Fatalf("parseObservations: %v", err)
-	}
-	if inner.calls != 1 {
-		t.Errorf("resolved the zone %d times for one location, want 1", inner.calls)
 	}
 }
 

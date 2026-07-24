@@ -84,45 +84,7 @@ func (t *tzfZoneFinder) zoneAt(lat, lon float64) (*time.Location, error) {
 	return loc, nil
 }
 
-// coord is a cache key: one birding location, as it appears in the export.
-type coord struct {
-	lat, lon float64
-}
-
-// zoneResult is a memoized lookup, successful or not.
-type zoneResult struct {
-	loc *time.Location
-	err error
-}
-
-// cachingZoneFinder memoizes an underlying finder by coordinate. An export
-// repeats the same handful of locations across many rows, and a polygon lookup
-// costs far more than a map hit.
-//
-// It is not safe for concurrent use; the parser resolves zones one row at a
-// time.
-type cachingZoneFinder struct {
-	inner zoneFinder
-	cache map[coord]zoneResult
-}
-
-func newCachingZoneFinder(inner zoneFinder) *cachingZoneFinder {
-	return &cachingZoneFinder{inner: inner, cache: make(map[coord]zoneResult)}
-}
-
-// zoneAt implements zoneFinder.
-func (c *cachingZoneFinder) zoneAt(lat, lon float64) (*time.Location, error) {
-	k := coord{lat: lat, lon: lon}
-	if r, ok := c.cache[k]; ok {
-		return r.loc, r.err
-	}
-	loc, err := c.inner.zoneAt(lat, lon)
-	c.cache[k] = zoneResult{loc: loc, err: err}
-	return loc, err
-}
-
-// defaultZoneFinder is the finder used in production: real boundary data,
-// looked up once per distinct location.
+// defaultZoneFinder is the finder used in production.
 func defaultZoneFinder() zoneFinder {
-	return newCachingZoneFinder(newTZFZoneFinder())
+	return newTZFZoneFinder()
 }

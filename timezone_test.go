@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -22,6 +21,11 @@ func (f *staticZoneFinder) zoneAt(_, _ float64) (*time.Location, error) {
 		return nil, f.err
 	}
 	return f.loc, nil
+}
+
+// coord identifies one birding location, as it appears in the export.
+type coord struct {
+	lat, lon float64
 }
 
 // tableZoneFinder resolves specific coordinates to specific zones, and fails
@@ -47,46 +51,6 @@ func (f *tableZoneFinder) zoneAt(lat, lon float64) (*time.Location, error) {
 		return loc, nil
 	}
 	return nil, fmt.Errorf("%w: %v, %v", errNoZoneForCoords, lat, lon)
-}
-
-func TestCachingZoneFinderMemoizes(t *testing.T) {
-	inner := &staticZoneFinder{loc: time.UTC}
-	f := newCachingZoneFinder(inner)
-
-	for range 3 {
-		loc, err := f.zoneAt(42.0, -86.5)
-		if err != nil || loc != time.UTC {
-			t.Fatalf("zoneAt = %v, %v", loc, err)
-		}
-	}
-	if inner.calls != 1 {
-		t.Errorf("inner finder called %d times, want 1", inner.calls)
-	}
-
-	// A different coordinate is a different lookup.
-	if _, err := f.zoneAt(40.0, -111.9); err != nil {
-		t.Fatal(err)
-	}
-	if inner.calls != 2 {
-		t.Errorf("inner finder called %d times, want 2", inner.calls)
-	}
-}
-
-// Failures are memoized too: a coordinate that can't be resolved shouldn't be
-// re-tried once per row it appears in.
-func TestCachingZoneFinderMemoizesFailures(t *testing.T) {
-	wantErr := errors.New("nope")
-	inner := &staticZoneFinder{err: wantErr}
-	f := newCachingZoneFinder(inner)
-
-	for range 3 {
-		if _, err := f.zoneAt(0, 0); !errors.Is(err, wantErr) {
-			t.Fatalf("zoneAt error = %v, want %v", err, wantErr)
-		}
-	}
-	if inner.calls != 1 {
-		t.Errorf("inner finder called %d times, want 1", inner.calls)
-	}
 }
 
 // TestTZFZoneFinder exercises the real boundary data. It's the one test that
