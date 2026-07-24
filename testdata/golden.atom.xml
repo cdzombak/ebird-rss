@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" lang="en-US">
+  <title>Test Feed</title>
+  <id>https://example.com/feed.xml</id>
+  <updated>2026-04-26T09:36:00-04:00</updated>
+  <subtitle>A test feed.</subtitle>
+  <link href="https://example.com/" rel="alternate" type="text/html"></link>
+  <link href="https://example.com/feed.xml" rel="self" type="application/atom+xml"></link>
+  <generator uri="" version="">ebird-rss &lt;dev&gt;</generator>
+  <author>
+    <name>Jane Doe</name>
+    <email></email>
+    <uri></uri>
+  </author>
+  <entry>
+    <title>American Robin (14)</title>
+    <id>ebird:S327776301:Turdus migratorius</id>
+    <updated>2026-04-26T09:36:00-04:00</updated>
+    <summary></summary>
+    <link href="https://ebird.org/checklist/S327776301" rel="alternate" type="text/html"></link>
+    <published>2026-04-26T09:36:00-04:00</published>
+    <content src="" type="html">Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, MI, US&lt;br&gt;&lt;br&gt;Feeding on the lawn, bold &amp;amp; unbothered</content>
+  </entry>
+  <entry>
+    <title>Canada Goose (2)</title>
+    <id>ebird:S327776301:Branta canadensis</id>
+    <updated>2026-04-26T09:36:00-04:00</updated>
+    <summary></summary>
+    <link href="https://ebird.org/checklist/S327776301" rel="alternate" type="text/html"></link>
+    <published>2026-04-26T09:36:00-04:00</published>
+    <content src="" type="html">H In Appropriate Habitat&lt;br&gt;Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, MI, US</content>
+  </entry>
+  <entry>
+    <title>Canada Goose (multiple)</title>
+    <id>ebird:S327160923:Branta canadensis</id>
+    <updated>2026-04-25T10:45:00-04:00</updated>
+    <summary></summary>
+    <link href="https://ebird.org/checklist/S327160923" rel="alternate" type="text/html"></link>
+    <published>2026-04-25T10:45:00-04:00</published>
+    <content src="" type="html">Grand Mere, Berrien, MI, US</content>
+  </entry>
+  <entry>
+    <title>Northern Flicker (Yellow-shafted) (1)</title>
+    <id>ebird:S200000002:Colaptes auratus auratus/luteus</id>
+    <updated>2024-05-01T18:15:00-04:00</updated>
+    <summary></summary>
+    <link href="https://ebird.org/checklist/S200000002" rel="alternate" type="text/html"></link>
+    <published>2024-05-01T18:15:00-04:00</published>
+    <content src="" type="html">S Singing Bird&lt;br&gt;Berrien, MI, US&lt;br&gt;&lt;br&gt;Drumming, not seen</content>
+  </entry>
+  <entry>
+    <title>Wood Duck (multiple)</title>
+    <id>ebird:S200000001:Aix sponsa</id>
+    <updated>2023-10-07T12:00:00-04:00</updated>
+    <summary></summary>
+    <link href="https://ebird.org/checklist/S200000001" rel="alternate" type="text/html"></link>
+    <published>2023-10-07T12:00:00-04:00</published>
+    <content src="" type="html">Berrien, MI, US</content>
+  </entry>
+</feed>

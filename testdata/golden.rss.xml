@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test Feed</title>
+    <link>https://example.com/</link>
+    <description>A test feed.</description>
+    <language>en-US</language>
+    <managingEditor>Jane Doe</managingEditor>
+    <lastBuildDate>Sun, 26 Apr 2026 09:36:00 -0400</lastBuildDate>
+    <generator>ebird-rss &lt;dev&gt;</generator>
+    <skipHours></skipHours>
+    <skipDays></skipDays>
+    <item>
+      <title>American Robin (14)</title>
+      <link>https://ebird.org/checklist/S327776301</link>
+      <description>Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, MI, US&lt;br&gt;&lt;br&gt;Feeding on the lawn, bold &amp;amp; unbothered</description>
+      <author></author>
+      <comments></comments>
+      <guid isPermaLink="false">ebird:S327776301:Turdus migratorius</guid>
+      <pubDate>Sun, 26 Apr 2026 09:36:00 -0400</pubDate>
+    </item>
+    <item>
+      <title>Canada Goose (2)</title>
+      <link>https://ebird.org/checklist/S327776301</link>
+      <description>H In Appropriate Habitat&lt;br&gt;Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, MI, US</description>
+      <author></author>
+      <comments></comments>
+      <guid isPermaLink="false">ebird:S327776301:Branta canadensis</guid>
+      <pubDate>Sun, 26 Apr 2026 09:36:00 -0400</pubDate>
+    </item>
+    <item>
+      <title>Canada Goose (multiple)</title>
+      <link>https://ebird.org/checklist/S327160923</link>
+      <description>Grand Mere, Berrien, MI, US</description>
+      <author></author>
+      <comments></comments>
+      <guid isPermaLink="false">ebird:S327160923:Branta canadensis</guid>
+      <pubDate>Sat, 25 Apr 2026 10:45:00 -0400</pubDate>
+    </item>
+    <item>
+      <title>Northern Flicker (Yellow-shafted) (1)</title>
+      <link>https://ebird.org/checklist/S200000002</link>
+      <description>S Singing Bird&lt;br&gt;Berrien, MI, US&lt;br&gt;&lt;br&gt;Drumming, not seen</description>
+      <author></author>
+      <comments></comments>
+      <guid isPermaLink="false">ebird:S200000002:Colaptes auratus auratus/luteus</guid>
+      <pubDate>Wed, 01 May 2024 18:15:00 -0400</pubDate>
+    </item>
+    <item>
+      <title>Wood Duck (multiple)</title>
+      <link>https://ebird.org/checklist/S200000001</link>
+      <description>Berrien, MI, US</description>
+      <author></author>
+      <comments></comments>
+      <guid isPermaLink="false">ebird:S200000001:Aix sponsa</guid>
+      <pubDate>Sat, 07 Oct 2023 12:00:00 -0400</pubDate>
+    </item>
+  </channel>
+</rss>
