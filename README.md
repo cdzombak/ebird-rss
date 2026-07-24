@@ -134,7 +134,8 @@ explicitly when generating the feed on a server or in a container, where "local"
 is usually UTC.
 
 Checklists submitted without a time of day (eBird's "casual observation"
-protocol, among others) are dated to midnight local time on the day observed.
+protocol, among others) are dated to noon local time on the day observed, so
+they sort among that day's other sightings rather than below all of them.
 
 ### Item descriptions
 

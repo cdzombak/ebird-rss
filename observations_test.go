@@ -107,9 +107,9 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	}
 
 	// The Wood Duck row has no Time and a short record (trailing columns
-	// omitted); it lands at midnight local.
+	// omitted); it lands at noon local.
 	last := obs[len(obs)-1]
-	if want := time.Date(2023, 10, 7, 0, 0, 0, 0, loc); !last.ObservedAt.Equal(want) {
+	if want := time.Date(2023, 10, 7, 12, 0, 0, 0, loc); !last.ObservedAt.Equal(want) {
 		t.Errorf("timeless observation = %s, want %s", last.ObservedAt, want)
 	}
 	if last.HasTime {
@@ -209,6 +209,45 @@ func TestParseObservationsTimeOfDay(t *testing.T) {
 		}
 		if h, m := obs[i].ObservedAt.Hour(), obs[i].ObservedAt.Minute(); h != w.hour || m != w.min {
 			t.Errorf("%s parsed as %02d:%02d, want %02d:%02d", w.name, h, m, w.hour, w.min)
+		}
+	}
+}
+
+// A checklist with no time of day is dated to noon, so it sorts among that
+// day's timed sightings instead of ahead of all of them.
+func TestParseObservationsDatesTimelessChecklistsAtNoon(t *testing.T) {
+	loc := mustLocation(t, "America/Detroit")
+	csv := sampleHeader +
+		"S1,Dawn Bird,Aves matutina,1,1,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-04-25,06:00 AM,eBird - Traveling Count,,0,,,1\n" +
+		"S2,Timeless Bird,Aves incerta,2,1,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-04-25,,eBird - Casual Observation,,0,,,1\n" +
+		"S3,Dusk Bird,Aves vespertina,3,1,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-04-25,08:30 PM,eBird - Traveling Count,,0,,,1\n" +
+		// Days that gain and lose an hour to DST: noon is constructed, not
+		// midnight plus twelve hours, so both still land at 12:00 local.
+		"S4,Spring Forward Bird,Aves verna,4,1,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-03-08,,eBird - Casual Observation,,0,,,1\n" +
+		"S5,Fall Back Bird,Aves autumnalis,5,1,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-11-01,,eBird - Casual Observation,,0,,,1\n"
+
+	obs := mustParseObservations(t, csv, loc)
+	byName := make(map[string]Observation, len(obs))
+	for _, o := range obs {
+		byName[o.CommonName] = o
+	}
+
+	for _, name := range []string{"Timeless Bird", "Spring Forward Bird", "Fall Back Bird"} {
+		o := byName[name]
+		if h, m := o.ObservedAt.Hour(), o.ObservedAt.Minute(); h != 12 || m != 0 {
+			t.Errorf("%s dated %02d:%02d local, want 12:00", name, h, m)
+		}
+		if o.HasTime {
+			t.Errorf("%s: HasTime = true, want false; the time is ours, not the export's", name)
+		}
+	}
+
+	// Newest first: the timeless checklist falls between the day's two timed
+	// ones rather than below both.
+	wantOrder := []string{"Fall Back Bird", "Dusk Bird", "Timeless Bird", "Dawn Bird", "Spring Forward Bird"}
+	for i, want := range wantOrder {
+		if obs[i].CommonName != want {
+			t.Errorf("obs[%d] = %q, want %q", i, obs[i].CommonName, want)
 		}
 	}
 }

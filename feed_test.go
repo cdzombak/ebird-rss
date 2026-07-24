@@ -43,7 +43,7 @@ func sampleObservations() []Observation {
 			HasTime:        true,
 		},
 		{
-			// Uncounted, and with no time of day: midnight.
+			// Uncounted, and with no time of day: noon, as the parser dates it.
 			SubmissionID:   "S1",
 			CommonName:     "Canada Goose",
 			ScientificName: "Branta canadensis",
@@ -51,7 +51,7 @@ func sampleObservations() []Observation {
 			Location:       "Grand Mere",
 			County:         "Berrien",
 			StateProvince:  "US-MI",
-			ObservedAt:     time.Date(2026, 4, 25, 0, 0, 0, 0, time.UTC),
+			ObservedAt:     time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC),
 		},
 	}
 }
@@ -102,8 +102,8 @@ func TestBuildFeed(t *testing.T) {
 		t.Errorf("published = %v, want the observation time", feed.Items[0].PublishedParsed)
 	}
 	if feed.Items[1].PublishedParsed == nil ||
-		!feed.Items[1].PublishedParsed.Equal(time.Date(2026, 4, 25, 0, 0, 0, 0, time.UTC)) {
-		t.Errorf("published = %v, want the observation date at midnight", feed.Items[1].PublishedParsed)
+		!feed.Items[1].PublishedParsed.Equal(time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC)) {
+		t.Errorf("published = %v, want the observation date at noon", feed.Items[1].PublishedParsed)
 	}
 	// The feed's update time is the newest observation, not `now`.
 	if feed.UpdatedParsed == nil || !feed.UpdatedParsed.Equal(time.Date(2026, 4, 26, 9, 36, 0, 0, time.UTC)) {

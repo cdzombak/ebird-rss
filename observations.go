@@ -20,6 +20,11 @@ const (
 	ebirdDateTimeLayout = "2006-01-02 03:04 PM"
 )
 
+// noonHour dates a checklist that carries no time of day. Midday puts it among
+// that day's timed sightings; midnight would make it the oldest instant of the
+// day, so a reader would file it below every sighting it was recorded alongside.
+const noonHour = 12
+
 // countMultiple is the Count value eBird uses for "present, but not counted".
 const countMultiple = "X"
 
@@ -77,7 +82,7 @@ type Observation struct {
 	// checklist.
 	Details string
 	// ObservedAt is the checklist's date and time, in the time zone of the place
-	// it was recorded. When the export carries no time, it is midnight there and
+	// it was recorded. When the export carries no time, it is noon there and
 	// HasTime is false.
 	ObservedAt time.Time
 	HasTime    bool
@@ -326,7 +331,9 @@ func observationFromRecord(rec []string, cols map[string]int, finder zoneFinder,
 		if err != nil {
 			return Observation{}, fmt.Errorf("parsing Date %q: %w", date, err)
 		}
-		o.ObservedAt = t
+		// Constructed rather than added to the parsed midnight, so a day that
+		// gains or loses an hour to DST still lands at noon.
+		o.ObservedAt = time.Date(t.Year(), t.Month(), t.Day(), noonHour, 0, 0, 0, loc)
 		return o, nil
 	}
 
