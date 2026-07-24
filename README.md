@@ -141,7 +141,11 @@ protocol, among others) are dated to midnight local time on the day observed.
 
 Each item's description is where the sighting happened, as
 `Location, County, State/Province` — for example
-`Gallup Park, Washtenaw, US-MI`.
+`Gallup Park, Washtenaw, MI, US`.
+
+eBird writes the State/Province column as a hyphenated code, largest unit first
+(`US-MI`). The feed reverses it to `MI, US`, so the whole description reads
+narrowest to widest. A code with no hyphen is used as-is.
 
 `Location` is whatever the site is named in your eBird account, and an eBird
 "personal location" is named by you: it's often `Home`, and it can be a full

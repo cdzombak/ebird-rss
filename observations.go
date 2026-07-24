@@ -106,7 +106,7 @@ func (o Observation) ChecklistURL() string {
 }
 
 // Description is the feed item's description: where the sighting happened, as
-// "Location, County, State/Province".
+// "Location, County, State/Province" — e.g. "Arcadia Marsh, Manistee, MI, US".
 //
 // A site the blocklist matches is left out entirely, leaving "County,
 // State/Province" — eBird location names are free text and a personal location
@@ -120,8 +120,29 @@ func (o Observation) Description(blocklist locationBlocklist) string {
 	if o.County != "" {
 		parts = append(parts, o.County)
 	}
-	if o.StateProvince != "" {
-		parts = append(parts, o.StateProvince)
+	if region := formatRegion(o.StateProvince); region != "" {
+		parts = append(parts, region)
+	}
+	return strings.Join(parts, ", ")
+}
+
+// formatRegion renders eBird's State/Province code for a human. The export
+// writes it largest-unit-first and hyphenated ("US-MI"), which reads backwards
+// next to the "Location, County" that precedes it; reversing the parts continues
+// narrowest-to-widest ("MI, US").
+//
+// A code with no hyphen is left alone, as are empty segments in a malformed one.
+func formatRegion(code string) string {
+	code = strings.TrimSpace(code)
+	if !strings.Contains(code, "-") {
+		return code
+	}
+	segments := strings.Split(code, "-")
+	parts := make([]string, 0, len(segments))
+	for i := len(segments) - 1; i >= 0; i-- {
+		if s := strings.TrimSpace(segments[i]); s != "" {
+			parts = append(parts, s)
+		}
 	}
 	return strings.Join(parts, ", ")
 }

@@ -87,7 +87,7 @@ func TestBuildFeed(t *testing.T) {
 		t.Errorf("GUID = %q", feed.Items[0].GUID)
 	}
 	// The description says where; Content carries it too, so Atom and JSON get it.
-	if want := "Lincoln Twp. Park, Berrien, US-MI"; feed.Items[0].Description != want ||
+	if want := "Lincoln Twp. Park, Berrien, MI, US"; feed.Items[0].Description != want ||
 		feed.Items[0].Content != want {
 		t.Errorf("description/content = %q / %q, want %q",
 			feed.Items[0].Description, feed.Items[0].Content, want)
@@ -132,7 +132,7 @@ func TestWriteFeedRSS(t *testing.T) {
 		"<title>Canada Goose (multiple)</title>",
 		"<link>https://ebird.org/checklist/S2</link>",
 		`<guid isPermaLink="false">ebird:S2:Turdus migratorius</guid>`,
-		"<description>Lincoln Twp. Park, Berrien, US-MI</description>",
+		"<description>Lincoln Twp. Park, Berrien, MI, US</description>",
 		"<pubDate>Sun, 26 Apr 2026 09:36:00 +0000</pubDate>",
 		"<language>en-US</language>",                // from config
 		"<managingEditor>Jane Doe</managingEditor>", // author, from config
@@ -153,7 +153,7 @@ func TestWriteFeedAtom(t *testing.T) {
 	for _, want := range []string{
 		"<id>ebird:S2:Turdus migratorius</id>", // GUID becomes the Atom entry id
 		"American Robin (3)",
-		"Lincoln Twp. Park, Berrien, US-MI",
+		"Lincoln Twp. Park, Berrien, MI, US",
 		`href="https://ebird.org/checklist/S2"`,
 		`href="https://example.com/feed.xml" rel="self"`, // feed_url -> rel=self
 		"Jane Doe", // author name
@@ -206,7 +206,7 @@ func TestWriteFeedJSON(t *testing.T) {
 	if !strings.HasPrefix(it.DatePublished, "2026-04-26T09:36:00") {
 		t.Errorf("date_published = %q, want the observation time", it.DatePublished)
 	}
-	if it.ContentHTML != "Lincoln Twp. Park, Berrien, US-MI" {
+	if it.ContentHTML != "Lincoln Twp. Park, Berrien, MI, US" {
 		t.Errorf("content_html = %q, want the location description", it.ContentHTML)
 	}
 }
@@ -231,7 +231,7 @@ func TestBuildFeedAppliesLocationBlocklist(t *testing.T) {
 		t.Fatalf("renderFeed: %v", err)
 	}
 	s := string(out)
-	if !strings.Contains(s, "<description>Washtenaw, US-MI</description>") {
+	if !strings.Contains(s, "<description>Washtenaw, MI, US</description>") {
 		t.Errorf("blocked location not replaced by county/state:\n%s", s)
 	}
 	for _, leak := range []string{"Sparrow Lane", "1234", "99999"} {

@@ -23,9 +23,10 @@ fallback_timezone: "America/Detroit"
 # Location names to keep out of the feed.
 #
 # Each item's description is "Location, County, State/Province", taken from the
-# export. eBird "personal locations" are named by you, so that Location can be a
+# export — e.g. "Arcadia Marsh, Manistee, MI, US". eBird "personal locations" are named by you, so that Location can be a
 # street address or a house number. Any location whose name contains one of these
-# strings is left out, and the description becomes just "County, State/Province".
+# strings is left out, and the description becomes just "County, State/Province"
+# ("Manistee, MI, US").
 #
 # Matching is on substrings and ignores case: "sparrow lane" hides
 # "1234 Sparrow Lane, Anytown". Entries may not be empty.

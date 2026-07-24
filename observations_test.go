@@ -80,7 +80,7 @@ func TestParseObservationsSampleExport(t *testing.T) {
 		t.Errorf("county/state = %q/%q, want Berrien/US-MI", first.County, first.StateProvince)
 	}
 	if got, want := first.Description(nil),
-		"Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, US-MI"; got != want {
+		"Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, MI, US"; got != want {
 		t.Errorf("Description() = %q, want %q", got, want)
 	}
 	if got, want := first.ChecklistURL(), "https://ebird.org/checklist/S327776301"; got != want {
