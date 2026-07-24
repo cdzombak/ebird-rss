@@ -55,12 +55,22 @@ func (fc feedConfig) FallbackLocation() *time.Location {
 	return fc.fallbackLocation
 }
 
+// newConfig is the configuration a config file is decoded over. Count is seeded
+// here rather than defaulted afterwards because yaml.v3 overwrites only the
+// fields a document actually contains: an omitted `count` keeps the default,
+// while an explicit `count: 0` survives to be rejected as the invalid value it
+// is. Fields whose zero value is already "unset" — the strings — are defaulted
+// in applyConfigDefaults instead.
+func newConfig() feedConfig {
+	return feedConfig{Count: defaultCount}
+}
+
 // loadConfigOrDefaults loads the configuration at path, or returns one with
 // every field at its default when path is empty. -config is optional: a run
 // that doesn't need to describe its feed shouldn't need a file to say so.
 func loadConfigOrDefaults(path string) (feedConfig, error) {
 	if path == "" {
-		return applyConfigDefaults(feedConfig{}, "")
+		return applyConfigDefaults(newConfig(), "")
 	}
 	return loadConfig(path)
 }
@@ -77,7 +87,7 @@ func loadConfig(path string) (feedConfig, error) {
 
 	dec := yaml.NewDecoder(f)
 	dec.KnownFields(true)
-	var cfg feedConfig
+	cfg := newConfig()
 	if err := dec.Decode(&cfg); err != nil {
 		if errors.Is(err, io.EOF) {
 			return feedConfig{}, fmt.Errorf("config %q is empty; see config.example.yml", path)
@@ -89,9 +99,6 @@ func loadConfig(path string) (feedConfig, error) {
 
 // applyConfigDefaults fills in omitted fields and validates the result.
 func applyConfigDefaults(cfg feedConfig, path string) (feedConfig, error) {
-	if cfg.Count == 0 {
-		cfg.Count = defaultCount
-	}
 	if cfg.Count < 1 {
 		return feedConfig{}, fmt.Errorf("config %q: count must be at least 1", path)
 	}

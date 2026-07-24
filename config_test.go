@@ -51,6 +51,18 @@ feed:
 	}
 }
 
+// A config file that omits count takes the default; only an explicit count
+// is validated.
+func TestLoadConfigOmittedCountDefaults(t *testing.T) {
+	cfg, err := loadConfig(writeConfig(t, "format: atom\n"))
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	if cfg.Count != 20 {
+		t.Errorf("count = %d, want the documented default of 20", cfg.Count)
+	}
+}
+
 // Omitting the blocklist hides nothing; it must not become a blocklist that
 // matches everything.
 func TestLoadConfigNoBlocklist(t *testing.T) {
@@ -141,6 +153,9 @@ func TestLoadConfigErrors(t *testing.T) {
 	for _, tc := range []struct{ name, body string }{
 		{"unknown key", "tittle: typo\n"},
 		{"count below one", "count: -1\n"},
+		// An explicit zero asks for a feed with no items; only an omitted
+		// count means "whatever you think best".
+		{"count zero", "count: 0\n"},
 		{"invalid format", "format: xml\n"},
 		{"unknown fallback timezone", "fallback_timezone: Mars/Olympus_Mons\n"},
 		{"empty file", ""},
