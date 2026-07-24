@@ -150,8 +150,15 @@ func TestRunWithoutConfig(t *testing.T) {
 
 func TestRunMissingConfig(t *testing.T) {
 	args := cliArgs{inFile: "testdata/sample.csv", outFile: "-", configPath: filepath.Join(t.TempDir(), "nope.yml")}
-	if err := run(args, discardLogger()); err == nil {
+	err := run(args, discardLogger())
+	if err == nil {
 		t.Fatal("expected an error for a missing config, got nil")
+	}
+	// Naming the stage matters here: a run that ignored the config-load error
+	// would still fail, but much later and with a confusing message, because
+	// an unconfigured feed has no output format.
+	if !strings.Contains(err.Error(), "open config") {
+		t.Errorf("error = %q, want it to mention opening the config", err)
 	}
 }
 
