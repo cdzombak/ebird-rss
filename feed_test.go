@@ -40,7 +40,6 @@ func sampleObservations() []Observation {
 			BreedingCode:   "S Singing Bird",
 			Details:        `Chased off a Cooper's Hawk & a "crow"`,
 			ObservedAt:     time.Date(2026, 4, 26, 9, 36, 0, 0, time.UTC),
-			HasTime:        true,
 		},
 		{
 			// Uncounted, and with no time of day: noon, as the parser dates it.
@@ -234,7 +233,6 @@ func TestBuildFeedAppliesLocationBlocklist(t *testing.T) {
 		County:        "Washtenaw",
 		StateProvince: "US-MI",
 		ObservedAt:    time.Date(2026, 4, 26, 9, 36, 0, 0, time.UTC),
-		HasTime:       true,
 	}}
 	fc := sampleConfig()
 	fc.LocationBlocklist = locationBlocklist{"Sparrow Lane"}

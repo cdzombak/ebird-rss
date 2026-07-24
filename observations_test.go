@@ -70,9 +70,6 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	if want := time.Date(2026, 4, 26, 9, 36, 0, 0, loc); !first.ObservedAt.Equal(want) {
 		t.Errorf("obs[0].ObservedAt = %s, want %s", first.ObservedAt, want)
 	}
-	if !first.HasTime {
-		t.Error("obs[0].HasTime = false, want true")
-	}
 	if first.Location != "Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192" {
 		t.Errorf("quoted location not parsed: %q", first.Location)
 	}
@@ -111,9 +108,6 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	last := obs[len(obs)-1]
 	if want := time.Date(2023, 10, 7, 12, 0, 0, 0, loc); !last.ObservedAt.Equal(want) {
 		t.Errorf("timeless observation = %s, want %s", last.ObservedAt, want)
-	}
-	if last.HasTime {
-		t.Error("timeless observation: HasTime = true, want false")
 	}
 }
 
@@ -236,9 +230,6 @@ func TestParseObservationsDatesTimelessChecklistsAtNoon(t *testing.T) {
 		o := byName[name]
 		if h, m := o.ObservedAt.Hour(), o.ObservedAt.Minute(); h != 12 || m != 0 {
 			t.Errorf("%s dated %02d:%02d local, want 12:00", name, h, m)
-		}
-		if o.HasTime {
-			t.Errorf("%s: HasTime = true, want false; the time is ours, not the export's", name)
 		}
 	}
 

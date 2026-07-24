@@ -82,10 +82,9 @@ type Observation struct {
 	// checklist.
 	Details string
 	// ObservedAt is the checklist's date and time, in the time zone of the place
-	// it was recorded. When the export carries no time, it is noon there and
-	// HasTime is false.
+	// it was recorded. When the export carries no time of day, it is noon there;
+	// see noonHour.
 	ObservedAt time.Time
-	HasTime    bool
 	// ZoneFallback records that the observation's coordinates couldn't be
 	// resolved to a time zone, so the configured fallback was used instead. The
 	// caller reports how many rows this happened to.
@@ -339,7 +338,6 @@ func observationFromRecord(rec []string, cols map[string]int, finder zoneFinder,
 		return Observation{}, fmt.Errorf("parsing Date/Time %q %q: %w", date, timeOfDay, err)
 	}
 	o.ObservedAt = t
-	o.HasTime = true
 	return o, nil
 }
 
