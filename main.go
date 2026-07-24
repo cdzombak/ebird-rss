@@ -3,8 +3,9 @@
 //
 // Each item's title is the species' common name and count, its description is
 // where you saw it, and its date is the observation's date and time. The number
-// of sightings, the output format, and the feed's metadata are read from a YAML
-// file given with -config.
+// of sightings, the output format, and the feed's metadata come from the YAML
+// file given with -config; every one of them has a default, so -config is
+// optional.
 package main
 
 import (
