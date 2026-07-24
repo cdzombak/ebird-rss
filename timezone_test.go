@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 )
@@ -45,7 +46,7 @@ func (f *tableZoneFinder) zoneAt(lat, lon float64) (*time.Location, error) {
 	if loc, ok := f.zones[coord{lat: lat, lon: lon}]; ok {
 		return loc, nil
 	}
-	return nil, errors.New("no zone for those coordinates")
+	return nil, fmt.Errorf("%w: %v, %v", errNoZoneForCoords, lat, lon)
 }
 
 func TestCachingZoneFinderMemoizes(t *testing.T) {

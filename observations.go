@@ -356,6 +356,11 @@ func observationFromRecord(rec []string, cols map[string]int, finder zoneFinder,
 // Coordinates that are absent entirely fall back quietly — some exports omit
 // them. Coordinates that are present but unreadable are an error, because that
 // means the file isn't shaped the way this program believes it is.
+//
+// A lookup that fails falls back only when the finder reports that nothing
+// covers the coordinate. Any other failure means the finder itself is broken —
+// boundary data that wouldn't load, say — and falling back on that would date
+// every row in the fallback zone and publish it as if it were right.
 func recordZone(lat, lon string, finder zoneFinder, fallbackLoc *time.Location) (loc *time.Location, fellBack bool, err error) {
 	if lat == "" || lon == "" {
 		return fallbackLoc, true, nil
@@ -369,10 +374,13 @@ func recordZone(lat, lon string, finder zoneFinder, fallbackLoc *time.Location) 
 		return nil, false, fmt.Errorf("parsing Longitude %q: %w", lon, err)
 	}
 	zone, err := finder.zoneAt(latF, lonF)
-	if err != nil {
-		// A coordinate no zone covers isn't worth failing the whole run over;
-		// the caller reports how many rows this happened to.
+	if errors.Is(err, errNoZoneForCoords) {
+		// Not worth failing the whole run over; the caller reports how many
+		// rows this happened to.
 		return fallbackLoc, true, nil
+	}
+	if err != nil {
+		return nil, false, err
 	}
 	return zone, false, nil
 }

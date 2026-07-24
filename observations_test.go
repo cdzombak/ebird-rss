@@ -357,7 +357,7 @@ func TestParseObservationsFallsBackWhenLookupFails(t *testing.T) {
 		"S1,American Robin,Turdus migratorius,29740,1,XX,,L1,Nowhere,999,999,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n"
 
 	fallback := mustLocation(t, "America/Detroit")
-	obs, err := parseObservations(strings.NewReader(csv), &staticZoneFinder{err: errors.New("no zone")}, fallback)
+	obs, err := parseObservations(strings.NewReader(csv), &staticZoneFinder{err: errNoZoneForCoords}, fallback)
 	if err != nil {
 		t.Fatalf("parseObservations: %v", err)
 	}
@@ -366,6 +366,20 @@ func TestParseObservationsFallsBackWhenLookupFails(t *testing.T) {
 	}
 	if got := obs[0].ObservedAt.UTC().Hour(); got != 13 { // 09:00 EDT
 		t.Errorf("observation dated %02d:00 UTC, want 13:00 (the fallback zone)", got)
+	}
+}
+
+// A finder that's broken rather than merely stumped fails the run. Falling
+// back would date every row in the fallback zone and publish it as if the
+// zones had been resolved.
+func TestParseObservationsFailsWhenTheFinderIsBroken(t *testing.T) {
+	csv := sampleHeader +
+		"S1,American Robin,Turdus migratorius,29740,1,US-MI,Berrien,L1,Lincoln Twp. Park,42.0,-86.5,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n"
+
+	broken := errors.New("loading time zone boundaries: no space left on device")
+	_, err := parseObservations(strings.NewReader(csv), &staticZoneFinder{err: broken}, time.UTC)
+	if !errors.Is(err, broken) {
+		t.Fatalf("parseObservations error = %v, want it to report %v", err, broken)
 	}
 }
 

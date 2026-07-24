@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -15,6 +16,13 @@ import (
 type zoneFinder interface {
 	zoneAt(lat, lon float64) (*time.Location, error)
 }
+
+// errNoZoneForCoords reports a coordinate the boundary data doesn't cover,
+// which in practice means one that isn't on Earth. It is the only failure a
+// caller should answer by falling back: every other error from a zoneFinder
+// means the finder itself is broken, and a run that fell back on those would
+// silently date the whole feed in the wrong zone.
+var errNoZoneForCoords = errors.New("no time zone covers those coordinates")
 
 // tzfZoneFinder resolves coordinates against the timezone-boundary-builder
 // polygons that github.com/ringsaturn/tzf embeds in the binary. No network
@@ -58,7 +66,7 @@ func (t *tzfZoneFinder) zoneAt(lat, lon float64) (*time.Location, error) {
 	// Note the argument order: tzf takes longitude first.
 	name := t.f.GetTimezoneName(lon, lat)
 	if name == "" {
-		return nil, fmt.Errorf("no time zone covers %v, %v", lat, lon)
+		return nil, fmt.Errorf("%w: %v, %v", errNoZoneForCoords, lat, lon)
 	}
 
 	if loc, ok := t.locations[name]; ok {
