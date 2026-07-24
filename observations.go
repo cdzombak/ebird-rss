@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -27,15 +28,18 @@ const multipleLabel = "multiple"
 // checklistURLPrefix is the public eBird URL for a checklist, by submission ID.
 const checklistURLPrefix = "https://ebird.org/checklist/"
 
-// Columns read from the export. Others (coordinates, protocol, breeding code,
-// …) are ignored. Only colCommonName, colCount, and colDate are required, so an
-// export that gains or loses other columns still parses.
+// Columns read from the export. Others (protocol, breeding code, county, …) are
+// ignored. Only colCommonName, colCount, and colDate are required, so an export
+// that gains or loses other columns still parses; without coordinates, rows fall
+// back to the configured time zone.
 const (
 	colSubmissionID   = "Submission ID"
 	colCommonName     = "Common Name"
 	colScientificName = "Scientific Name"
 	colCount          = "Count"
 	colLocation       = "Location"
+	colLatitude       = "Latitude"
+	colLongitude      = "Longitude"
 	colDate           = "Date"
 	colTime           = "Time"
 )
@@ -57,10 +61,16 @@ type Observation struct {
 	// counted". It may be empty if the export omits it.
 	Count    string
 	Location string
-	// ObservedAt is the checklist's date and time, in the configured location.
-	// When the export carries no time, it is midnight and HasTime is false.
+	// ObservedAt is the checklist's date and time, in the time zone of the place
+	// it was recorded. When the export carries no time, it is midnight there and
+	// HasTime is false.
 	ObservedAt time.Time
 	HasTime    bool
+	// ZoneFallback records that the observation's coordinates couldn't be
+	// resolved to a time zone, so the configured fallback was used instead. The
+	// caller reports this; a sighting dated in the wrong zone should not pass
+	// silently.
+	ZoneFallback bool
 }
 
 // Title is the observation's feed item title: the common name followed by the
@@ -100,12 +110,19 @@ func (o Observation) GUID() string {
 }
 
 // parseObservations reads an eBird "MyEBirdData.csv" export and returns its
-// observations sorted newest first. Dates and times are interpreted in loc,
-// since the export records neither an offset nor a zone.
+// observations sorted newest first.
 //
-// Ties (every species on one checklist shares its timestamp) are broken by
-// submission ID then common name, so the output is stable across runs.
-func parseObservations(r io.Reader, loc *time.Location) ([]Observation, error) {
+// The export records neither an offset nor a zone, so each row's date and time
+// are interpreted in the zone the finder resolves its coordinates to — meaning a
+// checklist from a trip out of state is dated correctly relative to one from
+// home. Rows with no coordinates, and coordinates the finder can't resolve,
+// fall back to fallbackLoc.
+//
+// Sorting compares absolute instants, so observations from different zones
+// interleave correctly. Ties (every species on one checklist shares its
+// timestamp) are broken by submission ID then common name, so the output is
+// stable across runs.
+func parseObservations(r io.Reader, finder zoneFinder, fallbackLoc *time.Location) ([]Observation, error) {
 	cr := csv.NewReader(r)
 	// Rows vary in length: trailing empty columns are sometimes omitted.
 	cr.FieldsPerRecord = -1
@@ -137,7 +154,7 @@ func parseObservations(r io.Reader, loc *time.Location) ([]Observation, error) {
 		}
 		// csv reports the line just read; the header occupies line 1.
 		line, _ := cr.FieldPos(0)
-		o, err := observationFromRecord(rec, cols, loc)
+		o, err := observationFromRecord(rec, cols, finder, fallbackLoc)
 		if err != nil {
 			return nil, fmt.Errorf("line %d: %w", line, err)
 		}
@@ -183,7 +200,7 @@ func indexColumns(header []string) (map[string]int, error) {
 }
 
 // observationFromRecord builds an Observation from one CSV row.
-func observationFromRecord(rec []string, cols map[string]int, loc *time.Location) (Observation, error) {
+func observationFromRecord(rec []string, cols map[string]int, finder zoneFinder, fallbackLoc *time.Location) (Observation, error) {
 	field := func(name string) string {
 		i, ok := cols[name]
 		if !ok || i >= len(rec) {
@@ -202,6 +219,12 @@ func observationFromRecord(rec []string, cols map[string]int, loc *time.Location
 	if o.CommonName == "" {
 		return Observation{}, errors.New("empty Common Name")
 	}
+
+	loc, fellBack, err := recordZone(field(colLatitude), field(colLongitude), finder, fallbackLoc)
+	if err != nil {
+		return Observation{}, err
+	}
+	o.ZoneFallback = fellBack
 
 	date, timeOfDay := field(colDate), field(colTime)
 	if date == "" {
@@ -223,6 +246,33 @@ func observationFromRecord(rec []string, cols map[string]int, loc *time.Location
 	o.ObservedAt = t
 	o.HasTime = true
 	return o, nil
+}
+
+// recordZone resolves one row's coordinates to a time zone, reporting whether
+// it had to fall back.
+//
+// Coordinates that are absent entirely fall back quietly — some exports omit
+// them. Coordinates that are present but unreadable are an error, because that
+// means the file isn't shaped the way this program believes it is.
+func recordZone(lat, lon string, finder zoneFinder, fallbackLoc *time.Location) (loc *time.Location, fellBack bool, err error) {
+	if lat == "" || lon == "" {
+		return fallbackLoc, true, nil
+	}
+	latF, err := strconv.ParseFloat(lat, 64)
+	if err != nil {
+		return nil, false, fmt.Errorf("parsing Latitude %q: %w", lat, err)
+	}
+	lonF, err := strconv.ParseFloat(lon, 64)
+	if err != nil {
+		return nil, false, fmt.Errorf("parsing Longitude %q: %w", lon, err)
+	}
+	zone, err := finder.zoneAt(latF, lonF)
+	if err != nil {
+		// A coordinate no zone covers isn't worth failing the whole run over;
+		// the caller reports how many rows this happened to.
+		return fallbackLoc, true, nil
+	}
+	return zone, false, nil
 }
 
 // isBlankRecord reports whether a row has no content, as trailing blank lines

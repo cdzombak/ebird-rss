@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -23,9 +24,11 @@ func mustLocation(t *testing.T, name string) *time.Location {
 	return loc
 }
 
+// mustParseObservations parses csv with every coordinate resolving to loc,
+// which is also the fallback: the single-zone case.
 func mustParseObservations(t *testing.T, csv string, loc *time.Location) []Observation {
 	t.Helper()
-	obs, err := parseObservations(strings.NewReader(csv), loc)
+	obs, err := parseObservations(strings.NewReader(csv), &staticZoneFinder{loc: loc}, loc)
 	if err != nil {
 		t.Fatalf("parseObservations: %v", err)
 	}
@@ -40,7 +43,7 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	defer func() { _ = f.Close() }()
 
 	loc := mustLocation(t, "America/Detroit")
-	obs, err := parseObservations(f, loc)
+	obs, err := parseObservations(f, &staticZoneFinder{loc: loc}, loc)
 	if err != nil {
 		t.Fatalf("parseObservations: %v", err)
 	}
@@ -123,18 +126,103 @@ func TestParseObservationsTimeOfDay(t *testing.T) {
 	}
 }
 
-func TestParseObservationsUsesConfiguredLocation(t *testing.T) {
+// An export spanning several time zones is dated per location, not per file.
+func TestParseObservationsUsesPerLocationZones(t *testing.T) {
+	// Same wall-clock date and time, three places. Ordered by absolute instant,
+	// the westernmost is newest.
 	csv := sampleHeader +
-		"S1,American Robin,Turdus migratorius,29740,1,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n"
+		"S1,Detroit Bird,Aves detroitiensis,1,1,US-MI,Wayne,L1,Belle Isle,42.34,-82.98,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n" +
+		"S2,Denver Bird,Aves coloradensis,2,1,US-CO,Denver,L2,City Park,39.75,-104.95,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n" +
+		"S3,Menominee Bird,Aves menomineeensis,3,1,US-MI,Gogebic,L3,Ironwood,46.45,-90.17,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n"
 
-	detroit := mustParseObservations(t, csv, mustLocation(t, "America/Detroit"))[0]
-	utc := mustParseObservations(t, csv, time.UTC)[0]
-
-	if detroit.ObservedAt.Equal(utc.ObservedAt) {
-		t.Errorf("same wall time in different zones should differ: %s vs %s", detroit.ObservedAt, utc.ObservedAt)
+	finder := newTableZoneFinder(t, map[coord]string{
+		{lat: 42.34, lon: -82.98}:  "America/Detroit",   // Eastern
+		{lat: 39.75, lon: -104.95}: "America/Denver",    // Mountain
+		{lat: 46.45, lon: -90.17}:  "America/Menominee", // Central, in Michigan
+	})
+	obs, err := parseObservations(strings.NewReader(csv), finder, time.UTC)
+	if err != nil {
+		t.Fatalf("parseObservations: %v", err)
 	}
-	if got := detroit.ObservedAt.UTC().Hour(); got != 13 { // 09:00 EDT == 13:00 UTC
-		t.Errorf("09:00 America/Detroit = %02d:00 UTC, want 13:00", got)
+	if len(obs) != 3 {
+		t.Fatalf("got %d observations, want 3", len(obs))
+	}
+
+	// 09:00 local in each zone: 13:00, 14:00, and 15:00 UTC respectively.
+	wantUTCHour := map[string]int{"Detroit Bird": 13, "Menominee Bird": 14, "Denver Bird": 15}
+	for _, o := range obs {
+		if got, want := o.ObservedAt.UTC().Hour(), wantUTCHour[o.CommonName]; got != want {
+			t.Errorf("%s: %02d:00 UTC, want %02d:00", o.CommonName, got, want)
+		}
+		if o.ZoneFallback {
+			t.Errorf("%s: fell back to the configured zone", o.CommonName)
+		}
+	}
+	// Newest first, by instant — which is the reverse of what a single-zone
+	// reading of this file would produce.
+	wantOrder := []string{"Denver Bird", "Menominee Bird", "Detroit Bird"}
+	for i, want := range wantOrder {
+		if obs[i].CommonName != want {
+			t.Errorf("obs[%d] = %q, want %q", i, obs[i].CommonName, want)
+		}
+	}
+}
+
+// Every row of a checklist shares its coordinates, so the finder is consulted
+// once per location, not once per row.
+func TestParseObservationsCachesZoneLookups(t *testing.T) {
+	row := "S1,Bird %d,Aves %d,1,1,US-MI,Wayne,L1,Belle Isle,42.34,-82.98,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n"
+	csv := sampleHeader
+	for i := range 5 {
+		csv += fmt.Sprintf(row, i, i)
+	}
+
+	inner := &staticZoneFinder{loc: time.UTC}
+	if _, err := parseObservations(strings.NewReader(csv), newCachingZoneFinder(inner), time.UTC); err != nil {
+		t.Fatalf("parseObservations: %v", err)
+	}
+	if inner.calls != 1 {
+		t.Errorf("resolved the zone %d times for one location, want 1", inner.calls)
+	}
+}
+
+func TestParseObservationsFallsBackWithoutCoordinates(t *testing.T) {
+	csv := sampleHeader +
+		"S1,American Robin,Turdus migratorius,29740,1,US-MI,Wayne,L1,Belle Isle,,,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n"
+
+	fallback := mustLocation(t, "America/Detroit")
+	finder := &staticZoneFinder{loc: time.UTC}
+	obs, err := parseObservations(strings.NewReader(csv), finder, fallback)
+	if err != nil {
+		t.Fatalf("parseObservations: %v", err)
+	}
+	if finder.calls != 0 {
+		t.Errorf("finder consulted %d times for a row with no coordinates, want 0", finder.calls)
+	}
+	if !obs[0].ZoneFallback {
+		t.Error("ZoneFallback = false, want true")
+	}
+	if got := obs[0].ObservedAt.UTC().Hour(); got != 13 { // 09:00 EDT
+		t.Errorf("observation dated %02d:00 UTC, want 13:00 (the fallback zone)", got)
+	}
+}
+
+// A coordinate the finder can't place shouldn't fail the whole run; the row
+// falls back and says so.
+func TestParseObservationsFallsBackWhenLookupFails(t *testing.T) {
+	csv := sampleHeader +
+		"S1,American Robin,Turdus migratorius,29740,1,XX,,L1,Nowhere,999,999,2026-04-25,09:00 AM,eBird - Casual Observation,,0,,,1\n"
+
+	fallback := mustLocation(t, "America/Detroit")
+	obs, err := parseObservations(strings.NewReader(csv), &staticZoneFinder{err: errors.New("no zone")}, fallback)
+	if err != nil {
+		t.Fatalf("parseObservations: %v", err)
+	}
+	if !obs[0].ZoneFallback {
+		t.Error("ZoneFallback = false, want true")
+	}
+	if got := obs[0].ObservedAt.UTC().Hour(); got != 13 { // 09:00 EDT
+		t.Errorf("observation dated %02d:00 UTC, want 13:00 (the fallback zone)", got)
 	}
 }
 
@@ -216,7 +304,7 @@ func TestParseObservationsErrors(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := parseObservations(strings.NewReader(tc.csv), loc)
+			_, err := parseObservations(strings.NewReader(tc.csv), &staticZoneFinder{loc: loc}, loc)
 			if err == nil {
 				t.Fatalf("got nil error, want one containing %q", tc.wantErr)
 			}
@@ -226,7 +314,7 @@ func TestParseObservationsErrors(t *testing.T) {
 		})
 	}
 
-	if _, err := parseObservations(strings.NewReader(sampleHeader), loc); !errors.Is(err, errNoObservations) {
+	if _, err := parseObservations(strings.NewReader(sampleHeader), &staticZoneFinder{loc: loc}, loc); !errors.Is(err, errNoObservations) {
 		t.Errorf("header-only input: got %v, want errNoObservations", err)
 	}
 }

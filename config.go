@@ -26,16 +26,16 @@ const (
 var validFormats = map[string]bool{"rss": true, "atom": true, "json": true}
 
 // feedConfig is the parsed -config YAML: how many observations to include, the
-// output format, how to interpret the export's timestamps, and how to describe
-// the resulting feed.
+// output format, the time zone to fall back on, and how to describe the
+// resulting feed.
 type feedConfig struct {
-	Count    int      `yaml:"count"`
-	Format   string   `yaml:"format"`
-	Timezone string   `yaml:"timezone"`
-	Feed     feedMeta `yaml:"feed"`
+	Count            int      `yaml:"count"`
+	Format           string   `yaml:"format"`
+	FallbackTimezone string   `yaml:"fallback_timezone"`
+	Feed             feedMeta `yaml:"feed"`
 
-	// location is the parsed Timezone, filled in by loadConfig.
-	location *time.Location
+	// fallbackLocation is the parsed FallbackTimezone, filled in by loadConfig.
+	fallbackLocation *time.Location
 }
 
 // feedMeta is the channel-level metadata written into the output feed.
@@ -48,12 +48,14 @@ type feedMeta struct {
 	Language    string `yaml:"language"`
 }
 
-// Location is the time zone the export's dates and times are interpreted in.
-func (fc feedConfig) Location() *time.Location {
-	if fc.location == nil {
+// FallbackLocation is the time zone used for observations whose coordinates
+// can't be resolved to one. Sightings that do carry usable coordinates are dated
+// in the zone of the place they were recorded; see zoneFinder.
+func (fc feedConfig) FallbackLocation() *time.Location {
+	if fc.fallbackLocation == nil {
 		return time.Local
 	}
-	return fc.location
+	return fc.fallbackLocation
 }
 
 // loadConfig reads, parses, and validates the feed configuration file. Unknown
@@ -92,17 +94,17 @@ func applyConfigDefaults(cfg feedConfig, path string) (feedConfig, error) {
 	if !validFormats[cfg.Format] {
 		return feedConfig{}, fmt.Errorf("config %q: format must be one of rss, atom, json (got %q)", path, cfg.Format)
 	}
-	// An eBird export records local dates and times with no zone or offset, so
-	// the zone they're read in is a configuration choice; it defaults to the
+	// Coordinates settle the zone for nearly every row; this only covers rows
+	// that have none, or whose coordinates land nowhere. It defaults to the
 	// machine's local time.
-	if cfg.Timezone == "" {
-		cfg.location = time.Local
+	if cfg.FallbackTimezone == "" {
+		cfg.fallbackLocation = time.Local
 	} else {
-		loc, err := time.LoadLocation(cfg.Timezone)
+		loc, err := time.LoadLocation(cfg.FallbackTimezone)
 		if err != nil {
-			return feedConfig{}, fmt.Errorf("config %q: unknown timezone %q: %w", path, cfg.Timezone, err)
+			return feedConfig{}, fmt.Errorf("config %q: unknown fallback_timezone %q: %w", path, cfg.FallbackTimezone, err)
 		}
-		cfg.location = loc
+		cfg.fallbackLocation = loc
 	}
 	if cfg.Feed.Title == "" {
 		cfg.Feed.Title = defaultFeedTitle

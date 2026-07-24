@@ -20,7 +20,7 @@ func TestLoadConfigFull(t *testing.T) {
 	path := writeConfig(t, `
 count: 30
 format: atom
-timezone: America/Detroit
+fallback_timezone: America/Detroit
 feed:
   title: My Birds
   description: Birds I saw
@@ -36,8 +36,8 @@ feed:
 	if cfg.Count != 30 || cfg.Format != "atom" {
 		t.Errorf("count/format = %d/%q", cfg.Count, cfg.Format)
 	}
-	if cfg.Location().String() != "America/Detroit" {
-		t.Errorf("location = %q, want America/Detroit", cfg.Location())
+	if cfg.FallbackLocation().String() != "America/Detroit" {
+		t.Errorf("location = %q, want America/Detroit", cfg.FallbackLocation())
 	}
 	if cfg.Feed.Title != "My Birds" || cfg.Feed.FeedURL != "https://example.com/feed.xml" ||
 		cfg.Feed.Author != "Jane Doe" || cfg.Feed.Language != "en-US" {
@@ -71,14 +71,14 @@ func TestLoadConfigDefaults(t *testing.T) {
 	if cfg.Feed.Description != defaultFeedDescription {
 		t.Errorf("description = %q, want default %q", cfg.Feed.Description, defaultFeedDescription)
 	}
-	if cfg.Location() != time.Local {
-		t.Errorf("location = %q, want the local zone", cfg.Location())
+	if cfg.FallbackLocation() != time.Local {
+		t.Errorf("location = %q, want the local zone", cfg.FallbackLocation())
 	}
 }
 
 // A zero-valued config (as built in tests) still reports a usable location.
 func TestConfigLocationFallsBackToLocal(t *testing.T) {
-	if (feedConfig{}).Location() != time.Local {
+	if (feedConfig{}).FallbackLocation() != time.Local {
 		t.Error("zero feedConfig should report the local zone")
 	}
 }
@@ -88,7 +88,7 @@ func TestLoadConfigErrors(t *testing.T) {
 		{"unknown key", "tittle: typo\n"},
 		{"count below one", "count: -1\n"},
 		{"invalid format", "format: xml\n"},
-		{"unknown timezone", "timezone: Mars/Olympus_Mons\n"},
+		{"unknown fallback timezone", "fallback_timezone: Mars/Olympus_Mons\n"},
 		{"empty file", ""},
 		{"malformed yaml", "count: [1, 2\n"},
 	} {

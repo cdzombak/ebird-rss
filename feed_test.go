@@ -12,10 +12,10 @@ import (
 
 func sampleConfig() feedConfig {
 	return feedConfig{
-		Count:    20,
-		Format:   "rss",
-		Timezone: "UTC",
-		location: time.UTC,
+		Count:            20,
+		Format:           "rss",
+		FallbackTimezone: "UTC",
+		fallbackLocation: time.UTC,
 		Feed: feedMeta{
 			Title:       "Test Feed",
 			Description: "A test feed.",

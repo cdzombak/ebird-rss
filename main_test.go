@@ -39,10 +39,10 @@ func TestValidateArgs(t *testing.T) {
 func TestGenerateFeed(t *testing.T) {
 	cfg := sampleConfig()
 	cfg.Count = 3
-	cfg.location = mustLocation(t, "America/Detroit")
+	cfg.fallbackLocation = mustLocation(t, "America/Detroit")
 
 	out := filepath.Join(t.TempDir(), "feed.xml")
-	err := generateFeed("testdata/sample.csv", out, cfg, time.Now(), discardLogger())
+	err := generateFeed("testdata/sample.csv", out, cfg, &staticZoneFinder{loc: cfg.FallbackLocation()}, time.Now(), discardLogger())
 	if err != nil {
 		t.Fatalf("generateFeed: %v", err)
 	}
@@ -53,7 +53,7 @@ func TestGenerateFeed(t *testing.T) {
 		"<title>American Robin (14)</title>",
 		"<title>Canada Goose (2)</title>",
 		"<title>Canada Goose (multiple)</title>",
-		"<pubDate>Sun, 26 Apr 2026 09:36:00 -0400</pubDate>", // in the configured zone
+		"<pubDate>Sun, 26 Apr 2026 09:36:00 -0400</pubDate>", // in the observation's zone
 	} {
 		if !strings.Contains(s, want) {
 			t.Errorf("output missing %q\n---\n%s", want, s)
@@ -71,7 +71,7 @@ func TestGenerateFeed(t *testing.T) {
 }
 
 func TestGenerateFeedMissingInput(t *testing.T) {
-	err := generateFeed(filepath.Join(t.TempDir(), "nope.csv"), "-", sampleConfig(), time.Now(), discardLogger())
+	err := generateFeed(filepath.Join(t.TempDir(), "nope.csv"), "-", sampleConfig(), &staticZoneFinder{loc: time.UTC}, time.Now(), discardLogger())
 	if err == nil {
 		t.Fatal("expected an error for a missing input file, got nil")
 	}
@@ -85,7 +85,7 @@ func TestGenerateFeedBadInput(t *testing.T) {
 	if err := os.WriteFile(bad, []byte("hello,world\n1,2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := generateFeed(bad, "-", sampleConfig(), time.Now(), discardLogger())
+	err := generateFeed(bad, "-", sampleConfig(), &staticZoneFinder{loc: time.UTC}, time.Now(), discardLogger())
 	if err == nil {
 		t.Fatal("expected an error for a non-eBird CSV, got nil")
 	}
@@ -94,10 +94,15 @@ func TestGenerateFeedBadInput(t *testing.T) {
 	}
 }
 
+// TestRunLoadsConfig covers the whole path a real invocation takes, including
+// the production zone finder resolving the sample export's coordinates.
 func TestRunLoadsConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping: loading time zone boundaries is slow")
+	}
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.yml")
-	if err := os.WriteFile(configPath, []byte("count: 2\nformat: json\ntimezone: UTC\n"), 0o644); err != nil {
+	if err := os.WriteFile(configPath, []byte("count: 2\nformat: json\nfallback_timezone: UTC\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	out := filepath.Join(dir, "feed.json")

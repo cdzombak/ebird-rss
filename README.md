@@ -5,9 +5,10 @@ RSS, Atom, or JSON feed of your most recent bird sightings.
 
 Each item's title is the species' common name and count — "American Robin (3)",
 or "American Robin (multiple)" when eBird recorded the species as present but
-uncounted (`X`) — and its date is the observation's date and time. Each item
-links to the eBird checklist the sighting came from. The feed is written
-atomically, so a web server never serves a half-written file.
+uncounted (`X`) — and its date is the observation's date and time, in the time
+zone of the place you were birding. Each item links to the eBird checklist the
+sighting came from. The feed is written atomically, so a web server never serves
+a half-written file.
 
 The program reads only the export file on disk; it makes no network requests and
 needs no eBird credentials.
@@ -60,7 +61,7 @@ cp out/ebird-rss $INSTALL_DIR
 
 ### Docker image
 
-Multi-architecture images are published to [Docker Hub](https://hub.docker.com/r/cdzombak/ebird-rss) and [GHCR](https://github.com/cdzombak/ebird-rss/pkgs/container/ebird-rss), built `FROM scratch` (just the binary). The IANA time zone database is compiled into the binary, so the `timezone` config works in the container.
+Multi-architecture images are published to [Docker Hub](https://hub.docker.com/r/cdzombak/ebird-rss) and [GHCR](https://github.com/cdzombak/ebird-rss/pkgs/container/ebird-rss), built `FROM scratch` (just the binary). Both the IANA time zone database and the time zone boundary polygons are compiled into the binary, so zone lookup works in the container with no data files to mount.
 
 Mount the directory holding your export and config, plus a writable directory for the feed:
 
@@ -81,7 +82,7 @@ The feed is described by a YAML file, passed with `-config`. A minimal example:
 ```yaml
 count: 20
 format: rss
-timezone: "America/Detroit"
+fallback_timezone: "America/Detroit"
 feed:
   title: "Chris Dzombak • Bird Sightings"
   description: "Birds I've recently seen and logged to eBird."
@@ -98,7 +99,7 @@ Every field is optional and falls back to a default. See
 | ------------------ | ---------------------------------- | ---------------------------------------------------- |
 | `count`            | `20`                               | Number of sightings to include, most recent first.   |
 | `format`           | `rss`                              | Output feed format: `rss`, `atom`, or `json`.        |
-| `timezone`         | the machine's local zone           | IANA time zone the export's dates and times are read in. |
+| `fallback_timezone` | the machine's local zone          | IANA time zone used only when a sighting's own zone can't be determined. |
 | `feed.title`       | `eBird Sightings`                  | Feed title.                                          |
 | `feed.description` | `Recent bird sightings from eBird.` | Feed description / subtitle.                         |
 | `feed.link`        | `https://ebird.org/`               | The website the feed represents (home page).         |
@@ -108,14 +109,27 @@ Every field is optional and falls back to a default. See
 
 Unknown keys are rejected, so a typo fails loudly instead of being ignored.
 
-### About `timezone`
+### About time zones
 
-eBird's export records a local date and a local time of day, with no zone or
-offset — so the zone they're read in is a configuration choice, not something
-the data settles. It defaults to the machine's local zone, which is right if you
-bird near home and run this on a machine set to the same zone. Set `timezone`
-explicitly when generating the feed somewhere else (a server, or a container,
-where "local" is usually UTC).
+eBird's export records a local date and a local time of day with no zone or
+offset. Rather than assume every sighting shares one zone, the program resolves
+each observation's coordinates — which the export includes on every row — to the
+time zone in effect there, so a checklist from a trip is dated correctly relative
+to one from home. Michigan and Florida each span two zones, so this matters even
+without leaving your state.
+
+The lookup is entirely offline: the
+[timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder)
+polygons are compiled into the binary via
+[`ringsaturn/tzf`](https://github.com/ringsaturn/tzf), which is what makes the
+binary ~33 MB. Loading them costs about 300ms once per run, and each distinct
+location is looked up only once.
+
+`fallback_timezone` covers the rows that lookup can't place: a row with no
+coordinates, or coordinates that land nowhere. When any sighting falls back, the
+program says so on stderr. It defaults to the machine's local zone; set it
+explicitly when generating the feed on a server or in a container, where "local"
+is usually UTC.
 
 Checklists submitted without a time of day (eBird's "casual observation"
 protocol, among others) are dated to midnight local time on the day observed.

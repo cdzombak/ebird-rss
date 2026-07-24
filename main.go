@@ -98,24 +98,29 @@ func run(args cliArgs, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	return generateFeed(args.inFile, args.outFile, fc, time.Now(), logger)
+	return generateFeed(args.inFile, args.outFile, fc, defaultZoneFinder(), time.Now(), logger)
 }
 
 // generateFeed reads the export at inFile and writes the configured feed of its
-// most recent observations to outFile. now is used as the feed's update time
-// only when no observation supplies one.
-func generateFeed(inFile, outFile string, fc feedConfig, now time.Time, logger *slog.Logger) error {
+// most recent observations to outFile. Each observation is dated in the zone
+// finder resolves its coordinates to. now is used as the feed's update time only
+// when no observation supplies one.
+func generateFeed(inFile, outFile string, fc feedConfig, finder zoneFinder, now time.Time, logger *slog.Logger) error {
 	f, err := os.Open(inFile)
 	if err != nil {
 		return fmt.Errorf("open eBird export %q: %w", inFile, err)
 	}
 	defer func() { _ = f.Close() }()
 
-	obs, err := parseObservations(f, fc.Location())
+	obs, err := parseObservations(f, finder, fc.FallbackLocation())
 	if err != nil {
 		return fmt.Errorf("reading eBird export %q: %w", inFile, err)
 	}
 	logger.Debug("parsed eBird export", "path", inFile, "observations", len(obs))
+	if n := countZoneFallbacks(obs); n > 0 {
+		logger.Warn("could not determine the time zone for some observations; used the configured fallback",
+			"observations", n, "fallback_timezone", fc.FallbackLocation())
+	}
 
 	feed := buildFeed(mostRecent(obs, fc.Count), fc, now)
 	if err := writeFeed(feed, fc.Format, outFile); err != nil {
@@ -128,4 +133,16 @@ func generateFeed(inFile, outFile string, fc feedConfig, now time.Time, logger *
 	}
 	logger.Debug("wrote feed", "format", fc.Format, "items", len(feed.Items), "dest", dest)
 	return nil
+}
+
+// countZoneFallbacks reports how many observations were dated in the configured
+// fallback zone rather than one resolved from their coordinates.
+func countZoneFallbacks(obs []Observation) int {
+	n := 0
+	for _, o := range obs {
+		if o.ZoneFallback {
+			n++
+		}
+	}
+	return n
 }

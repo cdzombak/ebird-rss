@@ -6,17 +6,19 @@
 
 # How many sightings to include, most recent first.
 # Default: 20
-count: 20
+count: 40
 
 # Output feed format: rss, atom, or json.
 # Default: rss
 format: rss
 
-# The IANA time zone the export's dates and times are read in. eBird's CSV
-# records local dates and times with no zone or offset, so this decides what
-# instant each sighting is published at.
+# The IANA time zone to fall back on when a sighting's zone can't be determined
+# from its coordinates — a row with no coordinates, or coordinates that land
+# nowhere on Earth. Sightings that do carry usable coordinates are dated in the
+# zone of the place they were recorded, so a trip out of state comes out right
+# without any configuration.
 # Default: the machine's local time zone
-timezone: "America/Detroit"
+fallback_timezone: "America/Detroit"
 
 # Channel-level metadata describing the feed itself.
 feed:
