@@ -5,6 +5,8 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # Release calls this workflow so a tag can't ship code that fails tests.
+  workflow_call:
 
 permissions:
   contents: read

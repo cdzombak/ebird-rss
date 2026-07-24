@@ -74,9 +74,27 @@ jobs:
       is_running_version_tag_update: >-
         ${{ steps.running_version_tag.outputs.is_running_version_tag_update }}
 
+  # Lint and Test run on pushes to main and on PRs, but a tag push triggers
+  # neither, so nothing would otherwise stop a release from being cut off a
+  # commit that doesn't lint or doesn't pass. Calling them here puts them in
+  # this run's job graph, where the build jobs can depend on them. Like the
+  # build jobs, they're skipped for a running-tag update, which reuses a commit
+  # that already went through this.
+  lint:
+    name: Lint
+    needs: [meta]
+    if: needs.meta.outputs.is_running_version_tag_update != 'true'
+    uses: ./.github/workflows/lint.yml
+
+  test:
+    name: Test
+    needs: [meta]
+    if: needs.meta.outputs.is_running_version_tag_update != 'true'
+    uses: ./.github/workflows/test.yml
+
   docker:
     name: Docker Images
-    needs: [meta]
+    needs: [meta, lint, test]
     if: needs.meta.outputs.is_running_version_tag_update != 'true'
     runs-on: ubuntu-latest
     permissions:
@@ -151,7 +169,7 @@ jobs:
 
   binaries:
     name: Binaries & Debian Packages
-    needs: [meta]
+    needs: [meta, lint, test]
     if: needs.meta.outputs.is_running_version_tag_update != 'true'
     runs-on: ubuntu-latest
 
@@ -321,7 +339,10 @@ jobs:
     name: Ntfy
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    needs: [meta, docker, binaries, release, aptly, homebrew]
+    # lint and test are needed here as well as by the build jobs: a failure in
+    # either only *skips* those, and a skip is not a failure, so without them
+    # this job would announce a success for a release that never got built.
+    needs: [meta, lint, test, docker, binaries, release, aptly, homebrew]
     steps:
       - name: Send success notification
         uses: niniyas/ntfy-action@V1.0.5
