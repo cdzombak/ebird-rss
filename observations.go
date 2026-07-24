@@ -126,27 +126,36 @@ func (o Observation) ChecklistURL() string {
 // Either the breeding code or the observer's notes may be absent; whatever is
 // missing is left out, along with the line break that would have followed it.
 //
-// Text from the export is free-form, so it's escaped here: the only markup in
-// the result is this function's own.
+// Text from the export is free-form, so it goes through escapeLines: the only
+// markup in the result is this function's own, plus the line breaks a
+// multi-line note asked for.
 func (o Observation) Description(blocklist locationBlocklist) string {
 	lines := make([]string, 0, 2)
 	if code := strings.TrimSpace(o.BreedingCode); code != "" {
-		lines = append(lines, html.EscapeString(code))
+		lines = append(lines, escapeLines(code))
 	}
 	if where := o.locationText(blocklist); where != "" {
-		lines = append(lines, html.EscapeString(where))
+		lines = append(lines, escapeLines(where))
 	}
 	desc := strings.Join(lines, "<br>")
 
-	details := strings.TrimSpace(o.Details)
+	details := escapeLines(strings.TrimSpace(o.Details))
 	if details == "" {
 		return desc
 	}
-	details = html.EscapeString(details)
 	if desc == "" {
 		return details
 	}
 	return desc + "<br><br>" + details
+}
+
+// escapeLines escapes export text for HTML and carries its line breaks over.
+// An eBird note is multi-line free text, so without this a note written as
+// paragraphs would render as one run-on line.
+func escapeLines(s string) string {
+	s = strings.ReplaceAll(s, "\r\n", "\n")
+	s = strings.ReplaceAll(s, "\r", "\n")
+	return strings.ReplaceAll(html.EscapeString(s), "\n", "<br>")
 }
 
 // locationText is where the sighting happened, as

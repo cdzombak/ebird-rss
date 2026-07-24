@@ -175,6 +175,32 @@ func TestObservationDescriptionEscapesExportText(t *testing.T) {
 	}
 }
 
+// An eBird note is multi-line free text, and the description is HTML: without
+// converting the breaks, a note written as paragraphs renders as one long line.
+func TestObservationDescriptionKeepsNoteLineBreaks(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		details string
+		want    string
+	}{
+		{"single break", "Heard first.\nSeen later.", "Heard first.<br>Seen later."},
+		{"blank line", "Heard first.\n\nSeen later.", "Heard first.<br><br>Seen later."},
+		{"crlf", "Heard first.\r\nSeen later.", "Heard first.<br>Seen later."},
+		{"bare cr", "Heard first.\rSeen later.", "Heard first.<br>Seen later."},
+		// The break is markup this program adds; the text around it is still
+		// escaped.
+		{"escaped either side", "a & b\nc < d", "a &amp; b<br>c &lt; d"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			o := Observation{Location: "Gallup Park", Details: tc.details}
+			want := "Gallup Park<br><br>" + tc.want
+			if got := o.Description(nil); got != want {
+				t.Errorf("Description() = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func TestParseObservationsTimeOfDay(t *testing.T) {
 	loc := mustLocation(t, "America/Detroit")
 	csv := sampleHeader +
