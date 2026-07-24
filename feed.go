@@ -92,12 +92,17 @@ func (c *ebirdRSSConverter) Convert(f *gofeed.Feed) (*rss.Feed, error) {
 	return rssFeed, nil
 }
 
-// ebirdAtomConverter wraps the default Atom converter to drop the entry summary.
+// ebirdAtomConverter wraps the default Atom converter to fix up two things the
+// default gets wrong for this feed:
 //
-// An Atom <summary> with no type attribute is plain text, so the default
-// converter — which copies the universal feed's Description into it — would have
-// readers show this feed's markup literally. The same text is already in
-// <content type="html">, where it renders.
+//   - The entry summary. An Atom <summary> with no type attribute is plain
+//     text, so the default converter — which copies the universal feed's
+//     Description into it — would have readers show this feed's markup
+//     literally. The same text is already in <content type="html">, where it
+//     renders.
+//   - The entry update time. RFC 4287 §4.1.2 requires an <updated> on every
+//     entry, and the default converter leaves it empty because the universal
+//     feed carries only a published date.
 type ebirdAtomConverter struct {
 	gofeed.DefaultAtomConverter
 }
@@ -110,6 +115,12 @@ func (c *ebirdAtomConverter) Convert(f *gofeed.Feed) (*atom.Feed, error) {
 	for _, entry := range atomFeed.Entries {
 		if entry.Content != nil {
 			entry.Summary = ""
+		}
+		// eBird doesn't record when a sighting was last edited, so the
+		// observation's own date stands in for it.
+		if entry.Updated == "" {
+			entry.Updated = entry.Published
+			entry.UpdatedParsed = entry.PublishedParsed
 		}
 	}
 	return atomFeed, nil

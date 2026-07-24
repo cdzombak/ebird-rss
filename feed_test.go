@@ -173,6 +173,17 @@ func TestWriteFeedAtom(t *testing.T) {
 	if strings.Contains(s, "<summary>S Singing Bird") {
 		t.Errorf("Atom summary carries HTML that would be shown literally\n---\n%s", s)
 	}
+	// RFC 4287 requires an <updated> on every entry. There are two here, plus
+	// one for the feed itself.
+	if strings.Contains(s, "<updated></updated>") {
+		t.Errorf("Atom entry has an empty <updated>, which is invalid\n---\n%s", s)
+	}
+	if n := strings.Count(s, "<updated>2026-04-26T09:36:00Z</updated>"); n != 2 {
+		t.Errorf("got %d entries/feed dated from the newest observation, want 2 (feed + first entry)\n---\n%s", n, s)
+	}
+	if !strings.Contains(s, "<updated>2026-04-25T12:00:00Z</updated>") {
+		t.Errorf("second entry's <updated> is not its observation date\n---\n%s", s)
+	}
 }
 
 func TestWriteFeedJSON(t *testing.T) {
