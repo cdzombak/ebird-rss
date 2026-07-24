@@ -1,0 +1,31 @@
+# Binaries and build output
+/ebird-rss
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/dist/
+/out/
+
+# Test binaries and coverage
+*.test
+*.out
+coverage.*
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Editor / OS cruft
+.DS_Store
+
+# JetBrains IDEs (GoLand)
+/.idea/*
+
+# eBird data exports; these are yours, not the repo's
+MyEBirdData.csv
+/ebird_*.zip
+
+# tmp folder for testing output
+/tmp/*

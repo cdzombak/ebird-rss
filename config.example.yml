@@ -1,0 +1,47 @@
+# Example configuration for ebird-rss.
+#
+# Pass this file with -config. Every field is optional; anything you omit falls
+# back to the default shown in the comment. Copy it, edit it, and point -config
+# at your copy.
+
+# How many sightings to include, most recent first.
+# Default: 20
+count: 20
+
+# Output feed format: rss, atom, or json.
+# Default: rss
+format: rss
+
+# The IANA time zone the export's dates and times are read in. eBird's CSV
+# records local dates and times with no zone or offset, so this decides what
+# instant each sighting is published at.
+# Default: the machine's local time zone
+timezone: "America/Detroit"
+
+# Channel-level metadata describing the feed itself.
+feed:
+  # The feed's title, shown by readers as its name.
+  # Default: eBird Sightings
+  title: "Chris Dzombak • Bird Sightings"
+
+  # A short description / subtitle.
+  # Default: Recent bird sightings from eBird.
+  description: "Birds I've recently seen and logged to eBird."
+
+  # The website the feed represents (the channel <link> / home page).
+  # Default: https://ebird.org/
+  link: "https://ebird.org/profile/MjA4NjIyNA"
+
+  # The canonical URL where this feed is published (the feed's self link).
+  # Rendered as rel="self" in Atom output and as feed_url in JSON Feed output.
+  # RSS output does not include a self link.
+  # Default: omitted
+  feed_url: "https://www.dzombak.com/feeds/birds.rss.xml"
+
+  # Feed author.
+  # Default: omitted
+  author: "Chris Dzombak"
+
+  # Feed language as a BCP 47 code (e.g. en-US, fr, de).
+  # Default: omitted
+  language: "en-US"

@@ -1,0 +1,164 @@
+# ebird-rss
+
+A small Go program that turns an [eBird](https://ebird.org) CSV export into an
+RSS, Atom, or JSON feed of your most recent bird sightings.
+
+Each item's title is the species' common name and count — "American Robin (3)",
+or "American Robin (multiple)" when eBird recorded the species as present but
+uncounted (`X`) — and its date is the observation's date and time. Each item
+links to the eBird checklist the sighting came from. The feed is written
+atomically, so a web server never serves a half-written file.
+
+The program reads only the export file on disk; it makes no network requests and
+needs no eBird credentials.
+
+## Getting your eBird data
+
+Request an export at <https://ebird.org/downloadMyData>. eBird emails you a
+`.zip` containing `MyEBirdData.csv`; that CSV is this program's input.
+
+## Installation
+
+### macOS via Homebrew
+
+```shell
+brew install cdzombak/oss/ebird-rss
+```
+
+### Debian via Apt repository
+
+Install my Debian repository if you haven't already:
+
+```shell
+sudo apt-get install ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://dist.cdzombak.net/deb.key | sudo gpg --dearmor -o /etc/apt/keyrings/dist-cdzombak-net.gpg
+sudo chmod 0644 /etc/apt/keyrings/dist-cdzombak-net.gpg
+echo -e "deb [signed-by=/etc/apt/keyrings/dist-cdzombak-net.gpg] https://dist.cdzombak.net/deb/oss any oss\n" | sudo tee -a /etc/apt/sources.list.d/dist-cdzombak-net.list > /dev/null
+sudo apt update
+```
+
+Then install `ebird-rss` via `apt`:
+
+```shell
+sudo apt install ebird-rss
+```
+
+### Manual installation from build artifacts
+
+Pre-built binaries for Linux and macOS on multiple architectures are attached to every [GitHub Release](https://github.com/cdzombak/ebird-rss/releases). Debian packages for each release are published as well.
+
+### Build and install locally
+
+```shell
+git clone https://github.com/cdzombak/ebird-rss.git
+cd ebird-rss
+make build
+
+cp out/ebird-rss $INSTALL_DIR
+```
+
+### Docker image
+
+Multi-architecture images are published to [Docker Hub](https://hub.docker.com/r/cdzombak/ebird-rss) and [GHCR](https://github.com/cdzombak/ebird-rss/pkgs/container/ebird-rss), built `FROM scratch` (just the binary). The IANA time zone database is compiled into the binary, so the `timezone` config works in the container.
+
+Mount the directory holding your export and config, plus a writable directory for the feed:
+
+```shell
+docker run --rm \
+  -v /home/cdzombak/ebird:/data \
+  -v /var/www/feeds:/out \
+  cdzombak/ebird-rss:1 \
+  -in-file /data/MyEBirdData.csv \
+  -config /data/config.yml \
+  -out-file /out/birds.xml
+```
+
+## Configuration
+
+The feed is described by a YAML file, passed with `-config`. A minimal example:
+
+```yaml
+count: 20
+format: rss
+timezone: "America/Detroit"
+feed:
+  title: "Chris Dzombak • Bird Sightings"
+  description: "Birds I've recently seen and logged to eBird."
+  link: "https://ebird.org/profile/MTIzNDU2"
+  feed_url: "https://www.dzombak.com/feeds/birds.rss.xml"
+  author: "Chris Dzombak"
+  language: "en-US"
+```
+
+Every field is optional and falls back to a default. See
+[`config.example.yml`](config.example.yml) for the full, commented reference.
+
+| Key                | Default                            | Description                                          |
+| ------------------ | ---------------------------------- | ---------------------------------------------------- |
+| `count`            | `20`                               | Number of sightings to include, most recent first.   |
+| `format`           | `rss`                              | Output feed format: `rss`, `atom`, or `json`.        |
+| `timezone`         | the machine's local zone           | IANA time zone the export's dates and times are read in. |
+| `feed.title`       | `eBird Sightings`                  | Feed title.                                          |
+| `feed.description` | `Recent bird sightings from eBird.` | Feed description / subtitle.                         |
+| `feed.link`        | `https://ebird.org/`               | The website the feed represents (home page).         |
+| `feed.feed_url`    | —                                  | Canonical URL of the feed itself (`rel="self"`). Rendered in Atom and JSON output only, not RSS. |
+| `feed.author`      | —                                  | Feed author.                                         |
+| `feed.language`    | —                                  | Feed language, as a BCP 47 code (e.g. `en-US`).      |
+
+Unknown keys are rejected, so a typo fails loudly instead of being ignored.
+
+### About `timezone`
+
+eBird's export records a local date and a local time of day, with no zone or
+offset — so the zone they're read in is a configuration choice, not something
+the data settles. It defaults to the machine's local zone, which is right if you
+bird near home and run this on a machine set to the same zone. Set `timezone`
+explicitly when generating the feed somewhere else (a server, or a container,
+where "local" is usually UTC).
+
+Checklists submitted without a time of day (eBird's "casual observation"
+protocol, among others) are dated to midnight local time on the day observed.
+
+## Usage
+
+```sh
+ebird-rss -in-file MyEBirdData.csv -config config.yml -out-file birds.xml
+```
+
+`-out-file -` writes the feed to stdout instead of a file:
+
+```sh
+ebird-rss -in-file MyEBirdData.csv -config config.yml -out-file -
+```
+
+### Flags
+
+`-help` prints usage and exits; `-version` prints the version and exits.
+
+| Flag        | Required | Description                                                               |
+| ----------- | -------- | ------------------------------------------------------------------------- |
+| `-in-file`  | yes      | Path to the eBird CSV export (`MyEBirdData.csv`) to read.                 |
+| `-out-file` | yes      | Path to write the output feed to (written atomically), or `-` for stdout. |
+| `-config`   | yes      | Path to the YAML [feed configuration](#configuration).                    |
+| `-verbose`  | no       | Enable verbose (debug) logging to stderr.                                 |
+
+The sighting count, output format, and all feed metadata live in the
+[config file](#configuration).
+
+## Building from source
+
+```sh
+make build          # build for the current platform to ./out
+make all            # cross-compile for macOS and Linux (amd64/arm64/armv7/armv6)
+make package        # build binaries + .deb packages (requires fpm)
+make test           # run the test suite
+make lint           # lint (requires golangci-lint)
+```
+
+The build stamps the version (from `.version.sh`) into the binary, reported by
+`-version`. `go run .` and un-stamped builds report `<dev>`.
+
+## License
+
+GPL-3.0; see [LICENSE](LICENSE).
