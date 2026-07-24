@@ -45,7 +45,7 @@ func TestGenerateFeed(t *testing.T) {
 	cfg.fallbackLocation = mustLocation(t, "America/Detroit")
 
 	out := filepath.Join(t.TempDir(), "feed.xml")
-	err := generateFeed("testdata/sample.csv", out, cfg, &staticZoneFinder{loc: cfg.FallbackLocation()}, time.Now(), discardLogger())
+	err := generateFeed("testdata/sample.csv", out, cfg, &staticZoneFinder{loc: cfg.FallbackLocation()}, discardLogger())
 	if err != nil {
 		t.Fatalf("generateFeed: %v", err)
 	}
@@ -74,7 +74,7 @@ func TestGenerateFeed(t *testing.T) {
 }
 
 func TestGenerateFeedMissingInput(t *testing.T) {
-	err := generateFeed(filepath.Join(t.TempDir(), "nope.csv"), "-", sampleConfig(), &staticZoneFinder{loc: time.UTC}, time.Now(), discardLogger())
+	err := generateFeed(filepath.Join(t.TempDir(), "nope.csv"), "-", sampleConfig(), &staticZoneFinder{loc: time.UTC}, discardLogger())
 	if err == nil {
 		t.Fatal("expected an error for a missing input file, got nil")
 	}
@@ -88,7 +88,7 @@ func TestGenerateFeedBadInput(t *testing.T) {
 	if err := os.WriteFile(bad, []byte("hello,world\n1,2\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	err := generateFeed(bad, "-", sampleConfig(), &staticZoneFinder{loc: time.UTC}, time.Now(), discardLogger())
+	err := generateFeed(bad, "-", sampleConfig(), &staticZoneFinder{loc: time.UTC}, discardLogger())
 	if err == nil {
 		t.Fatal("expected an error for a non-eBird CSV, got nil")
 	}

@@ -56,8 +56,7 @@ func sampleObservations() []Observation {
 }
 
 func TestBuildFeed(t *testing.T) {
-	now := time.Date(2026, 7, 23, 0, 0, 0, 0, time.UTC)
-	feed := buildFeed(sampleObservations(), sampleConfig(), now)
+	feed := buildFeed(sampleObservations(), sampleConfig())
 
 	if len(feed.Items) != 2 {
 		t.Fatalf("got %d items, want 2", len(feed.Items))
@@ -104,28 +103,15 @@ func TestBuildFeed(t *testing.T) {
 		!feed.Items[1].PublishedParsed.Equal(time.Date(2026, 4, 25, 12, 0, 0, 0, time.UTC)) {
 		t.Errorf("published = %v, want the observation date at noon", feed.Items[1].PublishedParsed)
 	}
-	// The feed's update time is the newest observation, not `now`.
+	// The feed's update time is the newest observation's.
 	if feed.UpdatedParsed == nil || !feed.UpdatedParsed.Equal(time.Date(2026, 4, 26, 9, 36, 0, 0, time.UTC)) {
 		t.Errorf("updated = %v, want the newest observation time", feed.UpdatedParsed)
 	}
 }
 
-func TestBuildFeedEmpty(t *testing.T) {
-	now := time.Date(2026, 7, 23, 0, 0, 0, 0, time.UTC)
-	feed := buildFeed(nil, sampleConfig(), now)
-
-	if len(feed.Items) != 0 {
-		t.Errorf("got %d items, want none", len(feed.Items))
-	}
-	// With no observation to date the feed, it falls back to now.
-	if feed.UpdatedParsed == nil || !feed.UpdatedParsed.Equal(now) {
-		t.Errorf("updated = %v, want now", feed.UpdatedParsed)
-	}
-}
-
 func TestWriteFeedRSS(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "feed.xml")
-	if err := writeFeed(buildFeed(sampleObservations(), sampleConfig(), time.Now()), "rss", out); err != nil {
+	if err := writeFeed(buildFeed(sampleObservations(), sampleConfig()), "rss", out); err != nil {
 		t.Fatalf("writeFeed: %v", err)
 	}
 	s := readFile(t, out)
@@ -149,7 +135,7 @@ func TestWriteFeedRSS(t *testing.T) {
 
 func TestWriteFeedAtom(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "feed.atom")
-	if err := writeFeed(buildFeed(sampleObservations(), sampleConfig(), time.Now()), "atom", out); err != nil {
+	if err := writeFeed(buildFeed(sampleObservations(), sampleConfig()), "atom", out); err != nil {
 		t.Fatalf("writeFeed: %v", err)
 	}
 	s := readFile(t, out)
@@ -188,7 +174,7 @@ func TestWriteFeedAtom(t *testing.T) {
 
 func TestWriteFeedJSON(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "feed.json")
-	if err := writeFeed(buildFeed(sampleObservations(), sampleConfig(), time.Now()), "json", out); err != nil {
+	if err := writeFeed(buildFeed(sampleObservations(), sampleConfig()), "json", out); err != nil {
 		t.Fatalf("writeFeed: %v", err)
 	}
 
@@ -254,7 +240,7 @@ func TestBuildFeedAppliesLocationBlocklist(t *testing.T) {
 	fc := sampleConfig()
 	fc.LocationBlocklist = locationBlocklist{"Sparrow Lane"}
 
-	out, err := renderFeed(buildFeed(obs, fc, time.Now()), "rss")
+	out, err := renderFeed(buildFeed(obs, fc), "rss")
 	if err != nil {
 		t.Fatalf("renderFeed: %v", err)
 	}
@@ -270,7 +256,7 @@ func TestBuildFeedAppliesLocationBlocklist(t *testing.T) {
 }
 
 func TestRenderFeedUnknownFormat(t *testing.T) {
-	if _, err := renderFeed(buildFeed(sampleObservations(), sampleConfig(), time.Now()), "xml"); err == nil {
+	if _, err := renderFeed(buildFeed(sampleObservations(), sampleConfig()), "xml"); err == nil {
 		t.Fatal("expected an error for an unknown format, got nil")
 	}
 }
@@ -284,7 +270,7 @@ func TestWriteFeedStdout(t *testing.T) {
 	os.Stdout = w
 	defer func() { os.Stdout = orig }()
 
-	writeErr := writeFeed(buildFeed(sampleObservations(), sampleConfig(), time.Now()), "rss", "-")
+	writeErr := writeFeed(buildFeed(sampleObservations(), sampleConfig()), "rss", "-")
 	if err := w.Close(); err != nil {
 		t.Fatal(err)
 	}

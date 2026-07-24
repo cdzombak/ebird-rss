@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"time"
 
 	// Embed the IANA time zone database, so the config's `timezone` works even
 	// where the system has no zoneinfo (notably the FROM scratch Docker image).
@@ -95,14 +94,13 @@ func run(args cliArgs, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
-	return generateFeed(args.inFile, args.outFile, fc, defaultZoneFinder(), time.Now(), logger)
+	return generateFeed(args.inFile, args.outFile, fc, defaultZoneFinder(), logger)
 }
 
 // generateFeed reads the export at inFile and writes the configured feed of its
 // most recent observations to outFile. Each observation is dated in the zone the
-// finder resolves its coordinates to. now is used as the feed's update time only
-// when no observation supplies one.
-func generateFeed(inFile, outFile string, fc feedConfig, finder zoneFinder, now time.Time, logger *slog.Logger) error {
+// finder resolves its coordinates to.
+func generateFeed(inFile, outFile string, fc feedConfig, finder zoneFinder, logger *slog.Logger) error {
 	f, err := os.Open(inFile)
 	if err != nil {
 		return fmt.Errorf("open eBird export %q: %w", inFile, err)
@@ -119,7 +117,7 @@ func generateFeed(inFile, outFile string, fc feedConfig, finder zoneFinder, now 
 			"observations", n, "fallback_timezone", fc.FallbackLocation())
 	}
 
-	feed := buildFeed(mostRecent(obs, fc.Count), fc, now)
+	feed := buildFeed(mostRecent(obs, fc.Count), fc)
 	if err := writeFeed(feed, fc.Format, outFile); err != nil {
 		return err
 	}

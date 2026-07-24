@@ -16,7 +16,11 @@ import (
 // which are expected to be ordered newest-first. Channel-level metadata comes
 // from the feed configuration; each item's title, description, link, and date
 // come from the observation.
-func buildFeed(obs []Observation, fc feedConfig, now time.Time) *gofeed.Feed {
+//
+// The feed's own date is the newest observation's. An export with no rows
+// never reaches here — parseObservations rejects it — so there is no invented
+// date for the case where there's nothing to date the feed from.
+func buildFeed(obs []Observation, fc feedConfig) *gofeed.Feed {
 	feed := &gofeed.Feed{
 		Title:       fc.Feed.Title,
 		Link:        fc.Feed.Link,
@@ -55,11 +59,10 @@ func buildFeed(obs []Observation, fc feedConfig, now time.Time) *gofeed.Feed {
 		feed.Items = append(feed.Items, item)
 	}
 
-	if newest.IsZero() {
-		newest = now
+	if !newest.IsZero() {
+		feed.Updated = newest.Format(time.RFC3339)
+		feed.UpdatedParsed = &newest
 	}
-	feed.Updated = newest.Format(time.RFC3339)
-	feed.UpdatedParsed = &newest
 
 	return feed
 }
