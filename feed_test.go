@@ -201,6 +201,7 @@ func TestWriteFeedJSON(t *testing.T) {
 			URL           string `json:"url"`
 			Title         string `json:"title"`
 			ContentHTML   string `json:"content_html"`
+			Summary       string `json:"summary"`
 			DatePublished string `json:"date_published"`
 		} `json:"items"`
 	}
@@ -231,6 +232,11 @@ func TestWriteFeedJSON(t *testing.T) {
 	if want := "S Singing Bird<br>Lincoln Twp. Park, Berrien, MI, US<br><br>" +
 		"Chased off a Cooper&#39;s Hawk &amp; a &#34;crow&#34;"; it.ContentHTML != want {
 		t.Errorf("content_html = %q, want %q", it.ContentHTML, want)
+	}
+	// content_html is the only field JSON Feed allows markup in; summary is
+	// plain text, so a reader would show this feed's markup literally.
+	if it.Summary != "" {
+		t.Errorf("summary = %q, want it omitted: it would be shown as plain text", it.Summary)
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/mmcdole/gofeed"
 	"github.com/mmcdole/gofeed/atom"
+	"github.com/mmcdole/gofeed/json"
 	"github.com/mmcdole/gofeed/rss"
 )
 
@@ -126,6 +127,28 @@ func (c *ebirdAtomConverter) Convert(f *gofeed.Feed) (*atom.Feed, error) {
 	return atomFeed, nil
 }
 
+// ebirdJSONConverter wraps the default JSON Feed converter to drop the item
+// summary, for the same reason ebirdAtomConverter does: JSON Feed defines
+// summary as plain text — content_html is the one field the format allows
+// markup in — and the default converter copies the universal feed's
+// Description into both.
+type ebirdJSONConverter struct {
+	gofeed.DefaultJSONConverter
+}
+
+func (c *ebirdJSONConverter) Convert(f *gofeed.Feed) (*json.Feed, error) {
+	jsonFeed, err := c.DefaultJSONConverter.Convert(f)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range jsonFeed.Items {
+		if item.ContentHTML != "" {
+			item.Summary = ""
+		}
+	}
+	return jsonFeed, nil
+}
+
 // rssDate renders t in the format RSS 2.0 requires, falling back to the
 // already-rendered string when there's no parsed time to work from.
 func rssDate(t *time.Time, fallback string) string {
@@ -145,7 +168,7 @@ func renderFeed(feed *gofeed.Feed, format string) ([]byte, error) {
 	case "atom":
 		err = feed.RenderAtom(&buf, &ebirdAtomConverter{})
 	case "json":
-		err = feed.RenderJSON(&buf, nil)
+		err = feed.RenderJSON(&buf, &ebirdJSONConverter{})
 	default:
 		return nil, fmt.Errorf("unknown feed format %q", format)
 	}
