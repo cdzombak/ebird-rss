@@ -21,15 +21,13 @@ func buildFeed(obs []Observation, fc feedConfig, now time.Time) *gofeed.Feed {
 		Link:        fc.Feed.Link,
 		Description: fc.Feed.Description,
 		Generator:   fmt.Sprintf("%s %s", appName, version),
+		// FeedLink is rendered as rel="self" in Atom and as feed_url in JSON
+		// Feed. (The RSS converter has no self-link field, so RSS omits it.)
+		FeedLink: fc.Feed.FeedURL,
+		Language: fc.Feed.Language,
 	}
-	// FeedLink is rendered as rel="self" in Atom and as feed_url in JSON Feed.
-	// (The RSS converter has no self-link field, so RSS output omits it.)
-	if fc.Feed.FeedURL != "" {
-		feed.FeedLink = fc.Feed.FeedURL
-	}
-	if fc.Feed.Language != "" {
-		feed.Language = fc.Feed.Language
-	}
+	// Unlike the plain string fields, an empty author has to be left off
+	// entirely rather than assigned: a Person with no name still renders.
 	if fc.Feed.Author != "" {
 		feed.Authors = []*gofeed.Person{{Name: fc.Feed.Author}}
 	}

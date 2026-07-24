@@ -176,13 +176,10 @@ func (o Observation) locationText(blocklist locationBlocklist) string {
 // next to the "Location, County" that precedes it; reversing the parts continues
 // narrowest-to-widest ("MI, US").
 //
-// A code with no hyphen is left alone, as are empty segments in a malformed one.
+// A code with no hyphen comes through unchanged, as do empty segments in a
+// malformed one.
 func formatRegion(code string) string {
-	code = strings.TrimSpace(code)
-	if !strings.Contains(code, "-") {
-		return code
-	}
-	segments := strings.Split(code, "-")
+	segments := strings.Split(strings.TrimSpace(code), "-")
 	parts := make([]string, 0, len(segments))
 	for i := len(segments) - 1; i >= 0; i-- {
 		if s := strings.TrimSpace(segments[i]); s != "" {
