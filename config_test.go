@@ -21,6 +21,9 @@ func TestLoadConfigFull(t *testing.T) {
 count: 30
 format: atom
 fallback_timezone: America/Detroit
+location_blocklist:
+  - Home
+  - Sparrow Lane
 feed:
   title: My Birds
   description: Birds I saw
@@ -42,6 +45,24 @@ feed:
 	if cfg.Feed.Title != "My Birds" || cfg.Feed.FeedURL != "https://example.com/feed.xml" ||
 		cfg.Feed.Author != "Jane Doe" || cfg.Feed.Language != "en-US" {
 		t.Errorf("feed metadata = %+v", cfg.Feed)
+	}
+	if len(cfg.LocationBlocklist) != 2 || !cfg.LocationBlocklist.hides("Home feeders") {
+		t.Errorf("location_blocklist = %v", cfg.LocationBlocklist)
+	}
+}
+
+// Omitting the blocklist hides nothing; it must not become a blocklist that
+// matches everything.
+func TestLoadConfigNoBlocklist(t *testing.T) {
+	cfg, err := loadConfig(writeConfig(t, "count: 5\n"))
+	if err != nil {
+		t.Fatalf("loadConfig: %v", err)
+	}
+	if len(cfg.LocationBlocklist) != 0 {
+		t.Errorf("location_blocklist = %v, want empty", cfg.LocationBlocklist)
+	}
+	if cfg.LocationBlocklist.hides("Home") {
+		t.Error("an omitted blocklist should hide nothing")
 	}
 }
 
@@ -91,6 +112,9 @@ func TestLoadConfigErrors(t *testing.T) {
 		{"unknown fallback timezone", "fallback_timezone: Mars/Olympus_Mons\n"},
 		{"empty file", ""},
 		{"malformed yaml", "count: [1, 2\n"},
+		// An empty entry would match every location and silently hide them all.
+		{"empty blocklist entry", "location_blocklist:\n  - Home\n  - \"\"\n"},
+		{"whitespace blocklist entry", "location_blocklist:\n  - \"   \"\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if _, err := loadConfig(writeConfig(t, tc.body)); err == nil {

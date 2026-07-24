@@ -20,6 +20,24 @@ format: rss
 # Default: the machine's local time zone
 fallback_timezone: "America/Detroit"
 
+# Location names to keep out of the feed.
+#
+# Each item's description is "Location, County, State/Province", taken from the
+# export. eBird "personal locations" are named by you, so that Location can be a
+# street address or a house number. Any location whose name contains one of these
+# strings is left out, and the description becomes just "County, State/Province".
+#
+# Matching is on substrings and ignores case: "sparrow lane" hides
+# "1234 Sparrow Lane, Anytown". Entries may not be empty.
+#
+# Note that items still link to the eBird checklist, which is a public page
+# naming the location — see the README.
+# Default: empty (no location is hidden)
+location_blocklist:
+  - "Home"
+  - "Sparrow Lane"
+  - "1234"
+
 # Channel-level metadata describing the feed itself.
 feed:
   # The feed's title, shown by readers as its name.

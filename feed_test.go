@@ -35,6 +35,8 @@ func sampleObservations() []Observation {
 			ScientificName: "Turdus migratorius",
 			Count:          "3",
 			Location:       "Lincoln Twp. Park",
+			County:         "Berrien",
+			StateProvince:  "US-MI",
 			ObservedAt:     time.Date(2026, 4, 26, 9, 36, 0, 0, time.UTC),
 			HasTime:        true,
 		},
@@ -45,6 +47,8 @@ func sampleObservations() []Observation {
 			ScientificName: "Branta canadensis",
 			Count:          "X",
 			Location:       "Grand Mere",
+			County:         "Berrien",
+			StateProvince:  "US-MI",
 			ObservedAt:     time.Date(2026, 4, 25, 0, 0, 0, 0, time.UTC),
 		},
 	}
@@ -81,6 +85,12 @@ func TestBuildFeed(t *testing.T) {
 	}
 	if feed.Items[0].GUID != "ebird:S2:Turdus migratorius" {
 		t.Errorf("GUID = %q", feed.Items[0].GUID)
+	}
+	// The description says where; Content carries it too, so Atom and JSON get it.
+	if want := "Lincoln Twp. Park, Berrien, US-MI"; feed.Items[0].Description != want ||
+		feed.Items[0].Content != want {
+		t.Errorf("description/content = %q / %q, want %q",
+			feed.Items[0].Description, feed.Items[0].Content, want)
 	}
 	// Each item's date is the observation's date and time.
 	if feed.Items[0].PublishedParsed == nil ||
@@ -122,6 +132,7 @@ func TestWriteFeedRSS(t *testing.T) {
 		"<title>Canada Goose (multiple)</title>",
 		"<link>https://ebird.org/checklist/S2</link>",
 		`<guid isPermaLink="false">ebird:S2:Turdus migratorius</guid>`,
+		"<description>Lincoln Twp. Park, Berrien, US-MI</description>",
 		"<pubDate>Sun, 26 Apr 2026 09:36:00 +0000</pubDate>",
 		"<language>en-US</language>",                // from config
 		"<managingEditor>Jane Doe</managingEditor>", // author, from config
@@ -142,6 +153,7 @@ func TestWriteFeedAtom(t *testing.T) {
 	for _, want := range []string{
 		"<id>ebird:S2:Turdus migratorius</id>", // GUID becomes the Atom entry id
 		"American Robin (3)",
+		"Lincoln Twp. Park, Berrien, US-MI",
 		`href="https://ebird.org/checklist/S2"`,
 		`href="https://example.com/feed.xml" rel="self"`, // feed_url -> rel=self
 		"Jane Doe", // author name
@@ -166,6 +178,7 @@ func TestWriteFeedJSON(t *testing.T) {
 			ID            string `json:"id"`
 			URL           string `json:"url"`
 			Title         string `json:"title"`
+			ContentHTML   string `json:"content_html"`
 			DatePublished string `json:"date_published"`
 		} `json:"items"`
 	}
@@ -192,6 +205,39 @@ func TestWriteFeedJSON(t *testing.T) {
 	}
 	if !strings.HasPrefix(it.DatePublished, "2026-04-26T09:36:00") {
 		t.Errorf("date_published = %q, want the observation time", it.DatePublished)
+	}
+	if it.ContentHTML != "Lincoln Twp. Park, Berrien, US-MI" {
+		t.Errorf("content_html = %q, want the location description", it.ContentHTML)
+	}
+}
+
+// The blocklist reaches the rendered feed, not just Observation.Description.
+func TestBuildFeedAppliesLocationBlocklist(t *testing.T) {
+	obs := []Observation{{
+		SubmissionID:  "S1",
+		CommonName:    "American Robin",
+		Count:         "1",
+		Location:      "1234 Sparrow Lane, Anytown, MI 99999",
+		County:        "Washtenaw",
+		StateProvince: "US-MI",
+		ObservedAt:    time.Date(2026, 4, 26, 9, 36, 0, 0, time.UTC),
+		HasTime:       true,
+	}}
+	fc := sampleConfig()
+	fc.LocationBlocklist = locationBlocklist{"Sparrow Lane"}
+
+	out, err := renderFeed(buildFeed(obs, fc, time.Now()), "rss")
+	if err != nil {
+		t.Fatalf("renderFeed: %v", err)
+	}
+	s := string(out)
+	if !strings.Contains(s, "<description>Washtenaw, US-MI</description>") {
+		t.Errorf("blocked location not replaced by county/state:\n%s", s)
+	}
+	for _, leak := range []string{"Sparrow Lane", "1234", "99999"} {
+		if strings.Contains(s, leak) {
+			t.Errorf("blocked location leaked %q into the feed:\n%s", leak, s)
+		}
 	}
 }
 

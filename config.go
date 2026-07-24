@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -26,13 +27,14 @@ const (
 var validFormats = map[string]bool{"rss": true, "atom": true, "json": true}
 
 // feedConfig is the parsed -config YAML: how many observations to include, the
-// output format, the time zone to fall back on, and how to describe the
-// resulting feed.
+// output format, the time zone to fall back on, which location names to keep out
+// of the feed, and how to describe the resulting feed.
 type feedConfig struct {
-	Count            int      `yaml:"count"`
-	Format           string   `yaml:"format"`
-	FallbackTimezone string   `yaml:"fallback_timezone"`
-	Feed             feedMeta `yaml:"feed"`
+	Count             int               `yaml:"count"`
+	Format            string            `yaml:"format"`
+	FallbackTimezone  string            `yaml:"fallback_timezone"`
+	LocationBlocklist locationBlocklist `yaml:"location_blocklist"`
+	Feed              feedMeta          `yaml:"feed"`
 
 	// fallbackLocation is the parsed FallbackTimezone, filled in by loadConfig.
 	fallbackLocation *time.Location
@@ -105,6 +107,13 @@ func applyConfigDefaults(cfg feedConfig, path string) (feedConfig, error) {
 			return feedConfig{}, fmt.Errorf("config %q: unknown fallback_timezone %q: %w", path, cfg.FallbackTimezone, err)
 		}
 		cfg.fallbackLocation = loc
+	}
+	// An empty entry is a substring of every location, so it would silently
+	// hide all of them — exactly the opposite of a careful blocklist.
+	for i, entry := range cfg.LocationBlocklist {
+		if strings.TrimSpace(entry) == "" {
+			return feedConfig{}, fmt.Errorf("config %q: location_blocklist entry %d is empty", path, i+1)
+		}
 	}
 	if cfg.Feed.Title == "" {
 		cfg.Feed.Title = defaultFeedTitle

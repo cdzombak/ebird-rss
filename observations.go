@@ -38,6 +38,8 @@ const (
 	colScientificName = "Scientific Name"
 	colCount          = "Count"
 	colLocation       = "Location"
+	colCounty         = "County"
+	colStateProvince  = "State/Province"
 	colLatitude       = "Latitude"
 	colLongitude      = "Longitude"
 	colDate           = "Date"
@@ -59,8 +61,13 @@ type Observation struct {
 	ScientificName string
 	// Count is the raw eBird value: a number, or "X" for "present, but not
 	// counted". It may be empty if the export omits it.
-	Count    string
-	Location string
+	Count string
+	// Location, County, and StateProvince describe where the sighting happened.
+	// Location is whatever the observer named the site, which for a personal
+	// location can be a home address; see locationBlocklist.
+	Location      string
+	County        string
+	StateProvince string
 	// ObservedAt is the checklist's date and time, in the time zone of the place
 	// it was recorded. When the export carries no time, it is midnight there and
 	// HasTime is false.
@@ -96,6 +103,27 @@ func (o Observation) ChecklistURL() string {
 		return ""
 	}
 	return checklistURLPrefix + o.SubmissionID
+}
+
+// Description is the feed item's description: where the sighting happened, as
+// "Location, County, State/Province".
+//
+// A site the blocklist matches is left out entirely, leaving "County,
+// State/Province" — eBird location names are free text and a personal location
+// is often a home address. Empty fields are skipped, so an export missing one
+// doesn't produce a stray comma.
+func (o Observation) Description(blocklist locationBlocklist) string {
+	parts := make([]string, 0, 3)
+	if o.Location != "" && !blocklist.hides(o.Location) {
+		parts = append(parts, o.Location)
+	}
+	if o.County != "" {
+		parts = append(parts, o.County)
+	}
+	if o.StateProvince != "" {
+		parts = append(parts, o.StateProvince)
+	}
+	return strings.Join(parts, ", ")
 }
 
 // GUID is a stable, unique identifier for the observation. It is not a URL: a
@@ -215,6 +243,8 @@ func observationFromRecord(rec []string, cols map[string]int, finder zoneFinder,
 		ScientificName: field(colScientificName),
 		Count:          field(colCount),
 		Location:       field(colLocation),
+		County:         field(colCounty),
+		StateProvince:  field(colStateProvince),
 	}
 	if o.CommonName == "" {
 		return Observation{}, errors.New("empty Common Name")

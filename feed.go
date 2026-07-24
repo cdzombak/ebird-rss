@@ -15,8 +15,9 @@ import (
 // link, description, self URL, author, language) comes from the feed
 // configuration.
 //
-// Each item's title is "Common Name (Count)" and its date is the observation's
-// date and time. Items carry no description; the link points at the eBird
+// Each item's title is "Common Name (Count)", its description is where the
+// sighting happened (minus any location the config's blocklist hides), and its
+// date is the observation's date and time. The link points at the eBird
 // checklist the observation came from.
 func buildFeed(obs []Observation, fc feedConfig, now time.Time) *gofeed.Feed {
 	feed := &gofeed.Feed{
@@ -40,10 +41,16 @@ func buildFeed(obs []Observation, fc feedConfig, now time.Time) *gofeed.Feed {
 	var newest time.Time
 	for _, o := range obs {
 		observedAt := o.ObservedAt
+		// Description and Content carry the same text: the RSS converter renders
+		// Description as <description>, while the Atom and JSON converters render
+		// Content, so setting both makes every output format carry it.
+		desc := o.Description(fc.LocationBlocklist)
 		item := &gofeed.Item{
 			Title:           o.Title(),
 			Link:            o.ChecklistURL(),
 			GUID:            o.GUID(),
+			Description:     desc,
+			Content:         desc,
 			Published:       observedAt.Format(time.RFC3339),
 			PublishedParsed: &observedAt,
 		}

@@ -27,5 +27,8 @@ go.work.sum
 MyEBirdData.csv
 /ebird_*.zip
 
+# your config
+config.yml
+
 # tmp folder for testing output
 /tmp/*

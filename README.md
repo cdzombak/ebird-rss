@@ -5,9 +5,9 @@ RSS, Atom, or JSON feed of your most recent bird sightings.
 
 Each item's title is the species' common name and count — "American Robin (3)",
 or "American Robin (multiple)" when eBird recorded the species as present but
-uncounted (`X`) — and its date is the observation's date and time, in the time
-zone of the place you were birding. Each item links to the eBird checklist the
-sighting came from. The feed is written atomically, so a web server never serves
+uncounted (`X`) — its description is where you saw it, and its date is the
+observation's date and time, in the time zone of the place you were birding. Each
+item links to the eBird checklist the sighting came from. The feed is written atomically, so a web server never serves
 a half-written file.
 
 The program reads only the export file on disk; it makes no network requests and
@@ -83,6 +83,8 @@ The feed is described by a YAML file, passed with `-config`. A minimal example:
 count: 20
 format: rss
 fallback_timezone: "America/Detroit"
+location_blocklist:
+  - "Home"
 feed:
   title: "Chris Dzombak • Bird Sightings"
   description: "Birds I've recently seen and logged to eBird."
@@ -100,6 +102,7 @@ Every field is optional and falls back to a default. See
 | `count`            | `20`                               | Number of sightings to include, most recent first.   |
 | `format`           | `rss`                              | Output feed format: `rss`, `atom`, or `json`.        |
 | `fallback_timezone` | the machine's local zone          | IANA time zone used only when a sighting's own zone can't be determined. |
+| `location_blocklist` | empty                             | Location names to keep out of the feed; see [Hiding locations](#hiding-locations). |
 | `feed.title`       | `eBird Sightings`                  | Feed title.                                          |
 | `feed.description` | `Recent bird sightings from eBird.` | Feed description / subtitle.                         |
 | `feed.link`        | `https://ebird.org/`               | The website the feed represents (home page).         |
@@ -133,6 +136,33 @@ is usually UTC.
 
 Checklists submitted without a time of day (eBird's "casual observation"
 protocol, among others) are dated to midnight local time on the day observed.
+
+### Hiding locations
+
+Each item's description is where the sighting happened, as
+`Location, County, State/Province` — for example
+`Gallup Park, Washtenaw, US-MI`.
+
+`Location` is whatever the site is named in your eBird account, and an eBird
+"personal location" is named by you: it's often `Home`, and it can be a full
+street address. `location_blocklist` is a list of strings; if any of them appears
+in a location's name, that name is dropped from the feed and the description is
+just `County, State/Province`.
+
+```yaml
+location_blocklist:
+  - "Home"
+  - "Sparrow Lane"
+  - "1234"
+```
+
+Matching is on substrings and ignores case, so `sparrow lane` also hides
+`1234 Sparrow Lane, Anytown`. An empty entry is rejected, since it would match
+every location and silently hide them all.
+
+**This only controls what this feed publishes.** Items still link to the eBird
+checklist, and that page is public — check what eBird itself shows for your
+personal locations before publishing a feed that includes them.
 
 ## Usage
 
