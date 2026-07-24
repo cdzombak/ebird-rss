@@ -55,6 +55,16 @@ func (fc feedConfig) FallbackLocation() *time.Location {
 	return fc.fallbackLocation
 }
 
+// loadConfigOrDefaults loads the configuration at path, or returns one with
+// every field at its default when path is empty. -config is optional: a run
+// that doesn't need to describe its feed shouldn't need a file to say so.
+func loadConfigOrDefaults(path string) (feedConfig, error) {
+	if path == "" {
+		return applyConfigDefaults(feedConfig{}, "")
+	}
+	return loadConfig(path)
+}
+
 // loadConfig reads, parses, and validates the feed configuration file. Unknown
 // keys are rejected so typos surface as errors rather than being silently
 // ignored. Omitted fields fall back to sensible defaults.

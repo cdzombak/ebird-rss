@@ -20,13 +20,16 @@ func TestValidateArgs(t *testing.T) {
 	if err := validateArgs(full); err != nil {
 		t.Errorf("complete args: %v", err)
 	}
+	// -config is optional.
+	if err := validateArgs(cliArgs{inFile: "in.csv", outFile: "out.xml"}); err != nil {
+		t.Errorf("args without -config: %v", err)
+	}
 	for _, tc := range []struct {
 		name string
 		args cliArgs
 	}{
 		{"no in-file", cliArgs{outFile: "out.xml", configPath: "config.yml"}},
 		{"no out-file", cliArgs{inFile: "in.csv", configPath: "config.yml"}},
-		{"no config", cliArgs{inFile: "in.csv", outFile: "out.xml"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if err := validateArgs(tc.args); err == nil {
@@ -118,6 +121,30 @@ func TestRunLoadsConfig(t *testing.T) {
 	}
 	if n := strings.Count(s, `"title"`); n != 3 { // feed title + 2 items
 		t.Errorf("got %d titles, want 3 (feed + 2 items)\n%s", n, s)
+	}
+}
+
+// Without -config, a run still produces a feed: every field defaults.
+func TestRunWithoutConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping: loading time zone boundaries is slow")
+	}
+	out := filepath.Join(t.TempDir(), "feed.xml")
+	args := cliArgs{inFile: "testdata/sample.csv", outFile: out}
+	if err := run(args, discardLogger()); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	s := readFile(t, out)
+	if !strings.Contains(s, "<rss") {
+		t.Errorf("output is not an RSS feed (the default format):\n%s", s)
+	}
+	if !strings.Contains(s, "<title>"+defaultFeedTitle+"</title>") {
+		t.Errorf("feed title is not the default %q:\n%s", defaultFeedTitle, s)
+	}
+	// The sample export's five observations are under the default count.
+	if n := strings.Count(s, "<item>"); n != 5 {
+		t.Errorf("got %d items, want all 5", n)
 	}
 }
 

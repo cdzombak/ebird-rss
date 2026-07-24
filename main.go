@@ -45,7 +45,7 @@ func main() {
 	flag.BoolVar(&showVersion, "version", false, "Print the version and exit.")
 	flag.StringVar(&args.inFile, "in-file", "", "Path to the eBird CSV export (MyEBirdData.csv) to read. Required.")
 	flag.StringVar(&args.outFile, "out-file", "", `Path to write the output feed to, or "-" for stdout. Required.`)
-	flag.StringVar(&args.configPath, "config", "", "Path to the YAML feed configuration file. Required. See config.example.yml.")
+	flag.StringVar(&args.configPath, "config", "", "Path to the YAML feed configuration file. Optional; every field defaults. See config.example.yml.")
 	flag.BoolVar(&args.verbose, "verbose", false, "Enable verbose (debug) logging to stderr.")
 	flag.Parse()
 
@@ -86,14 +86,11 @@ func validateArgs(args cliArgs) error {
 	if args.outFile == "" {
 		return errors.New("-out-file is required")
 	}
-	if args.configPath == "" {
-		return errors.New("-config is required")
-	}
 	return nil
 }
 
 func run(args cliArgs, logger *slog.Logger) error {
-	fc, err := loadConfig(args.configPath)
+	fc, err := loadConfigOrDefaults(args.configPath)
 	if err != nil {
 		return err
 	}

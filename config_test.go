@@ -66,6 +66,39 @@ func TestLoadConfigNoBlocklist(t *testing.T) {
 	}
 }
 
+// An empty path means -config was omitted, which is not an error: it asks for
+// the defaults.
+func TestLoadConfigOrDefaultsWithoutPath(t *testing.T) {
+	cfg, err := loadConfigOrDefaults("")
+	if err != nil {
+		t.Fatalf("loadConfigOrDefaults(\"\"): %v", err)
+	}
+	if cfg.Count != defaultCount || cfg.Format != defaultFormat {
+		t.Errorf("count/format = %d/%q, want the defaults %d/%q",
+			cfg.Count, cfg.Format, defaultCount, defaultFormat)
+	}
+	if cfg.Feed.Title != defaultFeedTitle || cfg.Feed.Link != defaultFeedLink ||
+		cfg.Feed.Description != defaultFeedDescription {
+		t.Errorf("feed metadata = %+v, want the defaults", cfg.Feed)
+	}
+	if len(cfg.LocationBlocklist) != 0 {
+		t.Errorf("location_blocklist = %v, want empty", cfg.LocationBlocklist)
+	}
+	if cfg.FallbackLocation() != time.Local {
+		t.Errorf("location = %q, want the local zone", cfg.FallbackLocation())
+	}
+}
+
+func TestLoadConfigOrDefaultsWithPath(t *testing.T) {
+	cfg, err := loadConfigOrDefaults(writeConfig(t, "count: 5\nformat: json\n"))
+	if err != nil {
+		t.Fatalf("loadConfigOrDefaults: %v", err)
+	}
+	if cfg.Count != 5 || cfg.Format != "json" {
+		t.Errorf("count/format = %d/%q, want 5/json", cfg.Count, cfg.Format)
+	}
+}
+
 func TestLoadConfigExampleFile(t *testing.T) {
 	// The shipped example must stay loadable as the config format evolves.
 	if _, err := loadConfig("config.example.yml"); err != nil {

@@ -77,7 +77,9 @@ docker run --rm \
 
 ## Configuration
 
-The feed is described by a YAML file, passed with `-config`. A minimal example:
+The feed is described by a YAML file, passed with `-config`. It's optional:
+every field has a default, so a run without one produces an RSS feed of your 20
+most recent sightings. A minimal example:
 
 ```yaml
 count: 20
@@ -179,10 +181,17 @@ the road you live on says so even when the location itself is hidden.
 ebird-rss -in-file MyEBirdData.csv -config config.yml -out-file birds.xml
 ```
 
-`-out-file -` writes the feed to stdout instead of a file:
+Without `-config`, every setting takes its default:
 
 ```sh
-ebird-rss -in-file MyEBirdData.csv -config config.yml -out-file -
+ebird-rss -in-file MyEBirdData.csv -out-file birds.xml
+```
+
+`-out-file -` writes the feed to stdout instead of a file, which is a quick way
+to see what you'd publish:
+
+```sh
+ebird-rss -in-file MyEBirdData.csv -out-file -
 ```
 
 ### Flags
@@ -193,7 +202,7 @@ ebird-rss -in-file MyEBirdData.csv -config config.yml -out-file -
 | ----------- | -------- | ------------------------------------------------------------------------- |
 | `-in-file`  | yes      | Path to the eBird CSV export (`MyEBirdData.csv`) to read.                 |
 | `-out-file` | yes      | Path to write the output feed to (written atomically), or `-` for stdout. |
-| `-config`   | yes      | Path to the YAML [feed configuration](#configuration).                    |
+| `-config`   | no       | Path to the YAML [feed configuration](#configuration). Defaults apply when omitted. |
 | `-verbose`  | no       | Enable verbose (debug) logging to stderr.                                 |
 
 The sighting count, output format, and all feed metadata live in the
