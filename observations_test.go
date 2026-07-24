@@ -79,9 +79,25 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	if first.County != "Berrien" || first.StateProvince != "US-MI" {
 		t.Errorf("county/state = %q/%q, want Berrien/US-MI", first.County, first.StateProvince)
 	}
+	if got, want := first.Details, "Feeding on the lawn, bold & unbothered"; got != want {
+		t.Errorf("obs[0].Details = %q, want %q", got, want)
+	}
+	if first.BreedingCode != "" {
+		t.Errorf("obs[0].BreedingCode = %q, want empty", first.BreedingCode)
+	}
 	if got, want := first.Description(nil),
-		"Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, MI, US"; got != want {
+		"Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, MI, US<br><br>"+
+			"Feeding on the lawn, bold &amp; unbothered"; got != want {
 		t.Errorf("Description() = %q, want %q", got, want)
+	}
+	// The other species on that checklist carries a breeding code and no note.
+	if got, want := obs[1].BreedingCode, "H In Appropriate Habitat"; got != want {
+		t.Errorf("obs[1].BreedingCode = %q, want %q", got, want)
+	}
+	if got, want := obs[1].Description(nil),
+		"H In Appropriate Habitat<br>"+
+			"Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, MI, US"; got != want {
+		t.Errorf("obs[1].Description() = %q, want %q", got, want)
 	}
 	if got, want := first.ChecklistURL(), "https://ebird.org/checklist/S327776301"; got != want {
 		t.Errorf("ChecklistURL() = %q, want %q", got, want)
@@ -98,6 +114,70 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	}
 	if last.HasTime {
 		t.Error("timeless observation: HasTime = true, want false")
+	}
+}
+
+// The breeding code and the observer's notes are absent from most rows, so
+// every combination of present and missing has to read correctly.
+func TestObservationDescriptionSections(t *testing.T) {
+	base := Observation{Location: "Gallup Park", County: "Washtenaw", StateProvince: "US-MI"}
+	const where = "Gallup Park, Washtenaw, MI, US"
+
+	withCode := base
+	withCode.BreedingCode = "S Singing Bird"
+	withDetails := base
+	withDetails.Details = "Heard, not seen"
+	both := withCode
+	both.Details = "Heard, not seen"
+
+	for _, tc := range []struct {
+		name string
+		o    Observation
+		want string
+	}{
+		{"location only", base, where},
+		{"breeding code", withCode, "S Singing Bird<br>" + where},
+		{"details", withDetails, where + "<br><br>Heard, not seen"},
+		{"both", both, "S Singing Bird<br>" + where + "<br><br>Heard, not seen"},
+		// Whitespace-only columns count as absent.
+		{"blank code and details", Observation{
+			Location: "Gallup Park", County: "Washtenaw", StateProvince: "US-MI",
+			BreedingCode: "  ", Details: "\t",
+		}, where},
+		// A note on a sighting whose location is blocked still reads correctly.
+		{"blocked location", Observation{
+			Location: "1234 Sparrow Lane", County: "Washtenaw", StateProvince: "US-MI",
+			Details: "At the feeder",
+		}, "Washtenaw, MI, US<br><br>At the feeder"},
+		// Nothing to say about where: the note stands alone, with no leading
+		// break.
+		{"nothing but a note", Observation{Location: "1234 Sparrow Lane", Details: "At the feeder"},
+			"At the feeder"},
+		{"nothing but a code", Observation{Location: "1234 Sparrow Lane", BreedingCode: "S Singing Bird"},
+			"S Singing Bird"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.o.Description(locationBlocklist{"Sparrow Lane"}); got != tc.want {
+				t.Errorf("Description() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// The export is free text; the only markup in a description is the line breaks
+// this program puts there.
+func TestObservationDescriptionEscapesExportText(t *testing.T) {
+	o := Observation{
+		Location:     "Smith & Sons Preserve",
+		County:       "Washtenaw",
+		BreedingCode: "P Pair <in> Suitable Habitat",
+		Details:      `Chased off a Cooper's Hawk & a "crow"`,
+	}
+	want := "P Pair &lt;in&gt; Suitable Habitat<br>" +
+		"Smith &amp; Sons Preserve, Washtenaw<br><br>" +
+		"Chased off a Cooper&#39;s Hawk &amp; a &#34;crow&#34;"
+	if got := o.Description(nil); got != want {
+		t.Errorf("Description() = %q, want %q", got, want)
 	}
 }
 

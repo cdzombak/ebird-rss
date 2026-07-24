@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"sort"
 	"strconv"
@@ -28,22 +29,24 @@ const multipleLabel = "multiple"
 // checklistURLPrefix is the public eBird URL for a checklist, by submission ID.
 const checklistURLPrefix = "https://ebird.org/checklist/"
 
-// Columns read from the export. Others (protocol, breeding code, county, …) are
-// ignored. Only colCommonName, colCount, and colDate are required, so an export
-// that gains or loses other columns still parses; without coordinates, rows fall
-// back to the configured time zone.
+// Columns read from the export. Others (protocol, duration, checklist comments,
+// …) are ignored. Only colCommonName, colCount, and colDate are required, so an
+// export that gains or loses other columns still parses; without coordinates,
+// rows fall back to the configured time zone.
 const (
-	colSubmissionID   = "Submission ID"
-	colCommonName     = "Common Name"
-	colScientificName = "Scientific Name"
-	colCount          = "Count"
-	colLocation       = "Location"
-	colCounty         = "County"
-	colStateProvince  = "State/Province"
-	colLatitude       = "Latitude"
-	colLongitude      = "Longitude"
-	colDate           = "Date"
-	colTime           = "Time"
+	colSubmissionID       = "Submission ID"
+	colCommonName         = "Common Name"
+	colScientificName     = "Scientific Name"
+	colCount              = "Count"
+	colLocation           = "Location"
+	colCounty             = "County"
+	colStateProvince      = "State/Province"
+	colLatitude           = "Latitude"
+	colLongitude          = "Longitude"
+	colDate               = "Date"
+	colTime               = "Time"
+	colBreedingCode       = "Breeding Code"
+	colObservationDetails = "Observation Details"
 )
 
 // requiredColumns must all be present in the export's header row.
@@ -68,6 +71,12 @@ type Observation struct {
 	Location      string
 	County        string
 	StateProvince string
+	// BreedingCode is eBird's breeding-behavior code and its label, as the export
+	// writes them together — "S Singing Bird". Empty for most observations.
+	BreedingCode string
+	// Details is the observer's free-text note about this species on this
+	// checklist. Empty for most observations.
+	Details string
 	// ObservedAt is the checklist's date and time, in the time zone of the place
 	// it was recorded. When the export carries no time, it is midnight there and
 	// HasTime is false.
@@ -105,14 +114,50 @@ func (o Observation) ChecklistURL() string {
 	return checklistURLPrefix + o.SubmissionID
 }
 
-// Description is the feed item's description: where the sighting happened, as
+// Description is the feed item's description, as HTML:
+//
+//	Breeding Code<br>
+//	Location, County, State/Province<br>
+//	<br>
+//	Observation Details
+//
+// The breeding code and the observer's notes are absent from most rows; whatever
+// is missing is left out, along with the line break that would have followed it.
+// An observation with neither is described by its location alone, as before.
+//
+// The text comes from the export, which is free-form, so it is escaped here: the
+// only markup in the result is this function's own.
+func (o Observation) Description(blocklist locationBlocklist) string {
+	lines := make([]string, 0, 2)
+	if code := strings.TrimSpace(o.BreedingCode); code != "" {
+		lines = append(lines, html.EscapeString(code))
+	}
+	if where := o.locationText(blocklist); where != "" {
+		lines = append(lines, html.EscapeString(where))
+	}
+	desc := strings.Join(lines, "<br>")
+
+	details := strings.TrimSpace(o.Details)
+	if details == "" {
+		return desc
+	}
+	details = html.EscapeString(details)
+	if desc == "" {
+		return details
+	}
+	// A blank line between where the bird was and what the observer said about
+	// it.
+	return desc + "<br><br>" + details
+}
+
+// locationText is where the sighting happened, as
 // "Location, County, State/Province" — e.g. "Arcadia Marsh, Manistee, MI, US".
 //
 // A site the blocklist matches is left out entirely, leaving "County,
 // State/Province" — eBird location names are free text and a personal location
 // is often a home address. Empty fields are skipped, so an export missing one
 // doesn't produce a stray comma.
-func (o Observation) Description(blocklist locationBlocklist) string {
+func (o Observation) locationText(blocklist locationBlocklist) string {
 	parts := make([]string, 0, 3)
 	if o.Location != "" && !blocklist.hides(o.Location) {
 		parts = append(parts, o.Location)
@@ -266,6 +311,8 @@ func observationFromRecord(rec []string, cols map[string]int, finder zoneFinder,
 		Location:       field(colLocation),
 		County:         field(colCounty),
 		StateProvince:  field(colStateProvince),
+		BreedingCode:   field(colBreedingCode),
+		Details:        field(colObservationDetails),
 	}
 	if o.CommonName == "" {
 		return Observation{}, errors.New("empty Common Name")

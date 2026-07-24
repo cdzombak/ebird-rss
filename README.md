@@ -5,7 +5,8 @@ RSS, Atom, or JSON feed of your most recent bird sightings.
 
 Each item's title is the species' common name and count — "American Robin (3)",
 or "American Robin (multiple)" when eBird recorded the species as present but
-uncounted (`X`) — its description is where you saw it, and its date is the
+uncounted (`X`) — its description is where you saw it, along with the breeding
+code and your notes when eBird has them, and its date is the
 observation's date and time, in the time zone of the place you were birding. Each
 item links to the eBird checklist the sighting came from. The feed is written atomically, so a web server never serves
 a half-written file.
@@ -137,15 +138,28 @@ is usually UTC.
 Checklists submitted without a time of day (eBird's "casual observation"
 protocol, among others) are dated to midnight local time on the day observed.
 
-### Hiding locations
+### Item descriptions
 
-Each item's description is where the sighting happened, as
+Each item's description says where the sighting happened, as
 `Location, County, State/Province` — for example
 `Gallup Park, Washtenaw, MI, US`.
 
-eBird writes the State/Province column as a hyphenated code, largest unit first
-(`US-MI`). The feed reverses it to `MI, US`, so the whole description reads
-narrowest to widest. A code with no hyphen is used as-is.
+When the export has them, eBird's breeding code goes above that line and your
+note on the sighting goes below it:
+
+```
+S Singing Bird
+Gallup Park, Washtenaw, MI, US
+
+Heard from the boardwalk, never seen.
+```
+
+Both columns are empty on most rows; whatever is missing is left out, along with
+the line break that would have followed it. The description is HTML, and text
+from the export is escaped, so a note containing `&` or `<` reads as you wrote
+it.
+
+### Hiding locations
 
 `Location` is whatever the site is named in your eBird account, and an eBird
 "personal location" is named by you: it's often `Home`, and it can be a full
@@ -163,6 +177,10 @@ location_blocklist:
 Matching is on substrings and ignores case, so `sparrow lane` also hides
 `1234 Sparrow Lane, Anytown`. An empty entry is rejected, since it would match
 every location and silently hide them all.
+
+The blocklist is checked against the `Location` column only. Your note on a
+sighting (`Observation Details`) is published as written, so a note that names
+the road you live on says so even when the location itself is hidden.
 
 **This only controls what this feed publishes.** Items still link to the eBird
 checklist, and that page is public — check what eBird itself shows for your
