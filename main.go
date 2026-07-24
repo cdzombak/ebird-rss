@@ -1,11 +1,10 @@
 // Command ebird-rss turns an eBird CSV export ("MyEBirdData.csv", from
 // https://ebird.org/downloadMyData) into a feed of your most recent sightings.
 //
-// Each item's title is the species' common name and count — "American Robin
-// (3)", or "American Robin (multiple)" when eBird recorded the species as
-// present but uncounted — and its date is the observation's date and time. The
-// number of sightings, the output format, and the feed's metadata are read from
-// a YAML file given with -config.
+// Each item's title is the species' common name and count, its description is
+// where you saw it, and its date is the observation's date and time. The number
+// of sightings, the output format, and the feed's metadata are read from a YAML
+// file given with -config.
 package main
 
 import (
@@ -102,7 +101,7 @@ func run(args cliArgs, logger *slog.Logger) error {
 }
 
 // generateFeed reads the export at inFile and writes the configured feed of its
-// most recent observations to outFile. Each observation is dated in the zone
+// most recent observations to outFile. Each observation is dated in the zone the
 // finder resolves its coordinates to. now is used as the feed's update time only
 // when no observation supplies one.
 func generateFeed(inFile, outFile string, fc feedConfig, finder zoneFinder, now time.Time, logger *slog.Logger) error {

@@ -11,24 +11,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Values used for config fields the user omits.
 const (
-	// defaultCount is the number of observations included when the config omits one.
-	defaultCount = 20
-	// defaultFormat is the feed format used when the config omits one.
-	defaultFormat = "rss"
-	// defaultFeedTitle and defaultFeedLink are fallbacks for an unconfigured feed.
-	defaultFeedTitle = "eBird Sightings"
-	defaultFeedLink  = "https://ebird.org/"
-	// defaultFeedDescription is used when the config omits a description.
+	defaultCount           = 20
+	defaultFormat          = "rss"
+	defaultFeedTitle       = "eBird Sightings"
+	defaultFeedLink        = "https://ebird.org/"
 	defaultFeedDescription = "Recent bird sightings from eBird."
 )
 
 // validFormats is the set of accepted values for the config's `format` field.
 var validFormats = map[string]bool{"rss": true, "atom": true, "json": true}
 
-// feedConfig is the parsed -config YAML: how many observations to include, the
-// output format, the time zone to fall back on, which location names to keep out
-// of the feed, and how to describe the resulting feed.
+// feedConfig is the parsed -config YAML.
 type feedConfig struct {
 	Count             int               `yaml:"count"`
 	Format            string            `yaml:"format"`
@@ -96,9 +91,6 @@ func applyConfigDefaults(cfg feedConfig, path string) (feedConfig, error) {
 	if !validFormats[cfg.Format] {
 		return feedConfig{}, fmt.Errorf("config %q: format must be one of rss, atom, json (got %q)", path, cfg.Format)
 	}
-	// Coordinates settle the zone for nearly every row; this only covers rows
-	// that have none, or whose coordinates land nowhere. It defaults to the
-	// machine's local time.
 	if cfg.FallbackTimezone == "" {
 		cfg.fallbackLocation = time.Local
 	} else {

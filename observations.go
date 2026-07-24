@@ -29,10 +29,9 @@ const multipleLabel = "multiple"
 // checklistURLPrefix is the public eBird URL for a checklist, by submission ID.
 const checklistURLPrefix = "https://ebird.org/checklist/"
 
-// Columns read from the export. Others (protocol, duration, checklist comments,
-// …) are ignored. Only colCommonName, colCount, and colDate are required, so an
-// export that gains or loses other columns still parses; without coordinates,
-// rows fall back to the configured time zone.
+// Columns read from the export; the rest (protocol, duration, checklist
+// comments, …) are ignored. Only requiredColumns must be present, so an export
+// that gains or loses other columns still parses.
 const (
 	colSubmissionID       = "Submission ID"
 	colCommonName         = "Common Name"
@@ -84,8 +83,7 @@ type Observation struct {
 	HasTime    bool
 	// ZoneFallback records that the observation's coordinates couldn't be
 	// resolved to a time zone, so the configured fallback was used instead. The
-	// caller reports this; a sighting dated in the wrong zone should not pass
-	// silently.
+	// caller reports how many rows this happened to.
 	ZoneFallback bool
 }
 
@@ -123,10 +121,9 @@ func (o Observation) ChecklistURL() string {
 //
 // The breeding code and the observer's notes are absent from most rows; whatever
 // is missing is left out, along with the line break that would have followed it.
-// An observation with neither is described by its location alone, as before.
 //
-// The text comes from the export, which is free-form, so it is escaped here: the
-// only markup in the result is this function's own.
+// Text from the export is free-form, so it's escaped here: the only markup in
+// the result is this function's own.
 func (o Observation) Description(blocklist locationBlocklist) string {
 	lines := make([]string, 0, 2)
 	if code := strings.TrimSpace(o.BreedingCode); code != "" {
@@ -145,8 +142,6 @@ func (o Observation) Description(blocklist locationBlocklist) string {
 	if desc == "" {
 		return details
 	}
-	// A blank line between where the bird was and what the observer said about
-	// it.
 	return desc + "<br><br>" + details
 }
 
@@ -207,10 +202,8 @@ func (o Observation) GUID() string {
 // observations sorted newest first.
 //
 // The export records neither an offset nor a zone, so each row's date and time
-// are interpreted in the zone the finder resolves its coordinates to — meaning a
-// checklist from a trip out of state is dated correctly relative to one from
-// home. Rows with no coordinates, and coordinates the finder can't resolve,
-// fall back to fallbackLoc.
+// are interpreted in the zone the finder resolves its coordinates to; rows
+// without usable coordinates fall back to fallbackLoc.
 //
 // Sorting compares absolute instants, so observations from different zones
 // interleave correctly. Ties (every species on one checklist shares its

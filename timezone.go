@@ -43,11 +43,9 @@ func newTZFZoneFinder() *tzfZoneFinder {
 // boundary data includes the nautical zones over open ocean.
 func (t *tzfZoneFinder) zoneAt(lat, lon float64) (*time.Location, error) {
 	t.once.Do(func() {
-		// NewFullFinder loads the full-precision polygons. The cheaper
-		// NewDefaultFinder trades accuracy near boundaries for a faster load,
-		// which is the wrong trade here: this program runs once per feed
-		// generation, and birding sites cluster along coasts and rivers —
-		// exactly where boundaries run.
+		// The full-precision polygons. The cheaper NewDefaultFinder trades
+		// accuracy near boundaries for a faster load, which is the wrong trade
+		// for a program that runs once per feed generation.
 		t.f, t.err = tzf.NewFullFinder()
 		if t.err != nil {
 			t.err = fmt.Errorf("loading time zone boundaries: %w", t.err)
@@ -86,9 +84,8 @@ type zoneResult struct {
 }
 
 // cachingZoneFinder memoizes an underlying finder by coordinate. An export
-// repeats the same handful of locations across many rows — a few hundred
-// sightings typically span a few dozen distinct coordinates — and a polygon
-// lookup costs far more than a map hit.
+// repeats the same handful of locations across many rows, and a polygon lookup
+// costs far more than a map hit.
 //
 // It is not safe for concurrent use; the parser resolves zones one row at a
 // time.

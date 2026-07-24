@@ -12,15 +12,9 @@ import (
 )
 
 // buildFeed constructs a universal gofeed.Feed from the given observations,
-// which are expected to be ordered newest-first. Channel-level metadata (title,
-// link, description, self URL, author, language) comes from the feed
-// configuration.
-//
-// Each item's title is "Common Name (Count)", its description is where the
-// sighting happened (minus any location the config's blocklist hides) plus the
-// breeding code and observer's notes when the export has them, and its date is
-// the observation's date and time. The link points at the eBird checklist the
-// observation came from.
+// which are expected to be ordered newest-first. Channel-level metadata comes
+// from the feed configuration; each item's title, description, link, and date
+// come from the observation.
 func buildFeed(obs []Observation, fc feedConfig, now time.Time) *gofeed.Feed {
 	feed := &gofeed.Feed{
 		Title:       fc.Feed.Title,
@@ -105,7 +99,7 @@ func (c *ebirdRSSConverter) Convert(f *gofeed.Feed) (*rss.Feed, error) {
 // An Atom <summary> with no type attribute is plain text, so the default
 // converter — which copies the universal feed's Description into it — would have
 // readers show this feed's markup literally. The same text is already in
-// <content type="html">, where it renders, so the summary has nothing to add.
+// <content type="html">, where it renders.
 type ebirdAtomConverter struct {
 	gofeed.DefaultAtomConverter
 }

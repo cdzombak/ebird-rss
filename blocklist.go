@@ -12,7 +12,7 @@ type locationBlocklist []string
 
 // hides reports whether location matches any entry. Matching is on substrings
 // and ignores case, because the point is to catch a name however it was typed:
-// "coon lake rd" should hide "1234 Coon Lake Rd, Ann Arbor".
+// "sparrow lane" should hide "1234 Sparrow Lane, Anytown".
 func (b locationBlocklist) hides(location string) bool {
 	if len(b) == 0 {
 		return false

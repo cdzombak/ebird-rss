@@ -13,26 +13,21 @@ count: 40
 format: rss
 
 # The IANA time zone to fall back on when a sighting's zone can't be determined
-# from its coordinates — a row with no coordinates, or coordinates that land
-# nowhere on Earth. Sightings that do carry usable coordinates are dated in the
-# zone of the place they were recorded, so a trip out of state comes out right
-# without any configuration.
+# from its coordinates. Sightings that do carry usable coordinates are dated in
+# the zone of the place they were recorded, so a trip out of state comes out
+# right without any configuration.
 # Default: the machine's local time zone
 fallback_timezone: "America/Detroit"
 
 # Location names to keep out of the feed.
 #
-# Each item's description is "Location, County, State/Province", taken from the
-# export — e.g. "Arcadia Marsh, Manistee, MI, US". eBird "personal locations" are named by you, so that Location can be a
-# street address or a house number. Any location whose name contains one of these
-# strings is left out, and the description becomes just "County, State/Province"
-# ("Manistee, MI, US").
+# eBird "personal locations" are named by you, so the export's Location column
+# can be a street address or a house number. Any location whose name contains
+# one of these strings is left out, and the item's description becomes just
+# "County, State/Province".
 #
 # Matching is on substrings and ignores case: "sparrow lane" hides
 # "1234 Sparrow Lane, Anytown". Entries may not be empty.
-#
-# Note that items still link to the eBird checklist, which is a public page
-# naming the location — see the README.
 # Default: empty (no location is hidden)
 location_blocklist:
   - "Home"

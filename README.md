@@ -140,8 +140,8 @@ Each item's description says where the sighting happened, as
 `Location, County, State/Province` — for example
 `Gallup Park, Washtenaw, MI, US`.
 
-When the observation has them, eBird's breeding code goes above that line and your
-note on the sighting goes below it:
+When the observation has them, eBird's breeding code goes above that line and
+your note on the sighting goes below it:
 
 ```
 S Singing Bird
