@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -179,9 +179,10 @@ func (o Observation) locationText(blocklist locationBlocklist) string {
 // malformed one.
 func formatRegion(code string) string {
 	segments := strings.Split(strings.TrimSpace(code), "-")
+	slices.Reverse(segments)
 	parts := make([]string, 0, len(segments))
-	for i := len(segments) - 1; i >= 0; i-- {
-		if s := strings.TrimSpace(segments[i]); s != "" {
+	for _, s := range segments {
+		if s = strings.TrimSpace(s); s != "" {
 			parts = append(parts, s)
 		}
 	}
@@ -253,15 +254,14 @@ func parseObservations(r io.Reader, finder zoneFinder, fallbackLoc *time.Locatio
 		return nil, errNoObservations
 	}
 
-	sort.SliceStable(obs, func(i, j int) bool {
-		a, b := obs[i], obs[j]
-		if !a.ObservedAt.Equal(b.ObservedAt) {
-			return a.ObservedAt.After(b.ObservedAt)
+	slices.SortStableFunc(obs, func(a, b Observation) int {
+		if c := b.ObservedAt.Compare(a.ObservedAt); c != 0 { // b first: newest first
+			return c
 		}
-		if a.SubmissionID != b.SubmissionID {
-			return a.SubmissionID < b.SubmissionID
+		if c := strings.Compare(a.SubmissionID, b.SubmissionID); c != 0 {
+			return c
 		}
-		return a.CommonName < b.CommonName
+		return strings.Compare(a.CommonName, b.CommonName)
 	})
 	return obs, nil
 }
@@ -382,8 +382,5 @@ func isBlankRecord(rec []string) bool {
 // mostRecent returns the first n observations, which are expected to be sorted
 // newest first. A shorter list is returned unchanged.
 func mostRecent(obs []Observation, n int) []Observation {
-	if n < len(obs) {
-		return obs[:n]
-	}
-	return obs
+	return obs[:min(n, len(obs))]
 }

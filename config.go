@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,8 +21,9 @@ const (
 	defaultFeedDescription = "Recent bird sightings from eBird."
 )
 
-// validFormats is the set of accepted values for the config's `format` field.
-var validFormats = map[string]bool{"rss": true, "atom": true, "json": true}
+// validFormats is the set of accepted values for the config's `format` field,
+// in the order the error message lists them.
+var validFormats = []string{"rss", "atom", "json"}
 
 // feedConfig is the parsed -config YAML.
 type feedConfig struct {
@@ -105,8 +107,9 @@ func applyConfigDefaults(cfg feedConfig, path string) (feedConfig, error) {
 	if cfg.Format == "" {
 		cfg.Format = defaultFormat
 	}
-	if !validFormats[cfg.Format] {
-		return feedConfig{}, fmt.Errorf("config %q: format must be one of rss, atom, json (got %q)", path, cfg.Format)
+	if !slices.Contains(validFormats, cfg.Format) {
+		return feedConfig{}, fmt.Errorf("config %q: format must be one of %s (got %q)",
+			path, strings.Join(validFormats, ", "), cfg.Format)
 	}
 	if cfg.FallbackTimezone == "" {
 		cfg.fallbackLocation = time.Local
