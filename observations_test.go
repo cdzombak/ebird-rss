@@ -110,96 +110,6 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	}
 }
 
-// Either the breeding code or the observer's notes may be absent, so every
-// combination of present and missing has to read correctly.
-func TestObservationDescriptionSections(t *testing.T) {
-	base := Observation{Location: "Gallup Park", County: "Washtenaw", StateProvince: "US-MI"}
-	const where = "Gallup Park, Washtenaw, MI, US"
-
-	withCode := base
-	withCode.BreedingCode = "S Singing Bird"
-	withDetails := base
-	withDetails.Details = "Heard, not seen"
-	both := withCode
-	both.Details = "Heard, not seen"
-
-	for _, tc := range []struct {
-		name string
-		o    Observation
-		want string
-	}{
-		{"location only", base, where},
-		{"breeding code", withCode, "S Singing Bird<br>" + where},
-		{"details", withDetails, where + "<br><br>Heard, not seen"},
-		{"both", both, "S Singing Bird<br>" + where + "<br><br>Heard, not seen"},
-		// Whitespace-only columns count as absent.
-		{"blank code and details", Observation{
-			Location: "Gallup Park", County: "Washtenaw", StateProvince: "US-MI",
-			BreedingCode: "  ", Details: "\t",
-		}, where},
-		// A note on a sighting whose location is blocked still reads correctly.
-		{"blocked location", Observation{
-			Location: "1234 Sparrow Lane", County: "Washtenaw", StateProvince: "US-MI",
-			Details: "At the feeder",
-		}, "Washtenaw, MI, US<br><br>At the feeder"},
-		// Nothing to say about where: the note stands alone, with no leading
-		// break.
-		{"nothing but a note", Observation{Location: "1234 Sparrow Lane", Details: "At the feeder"},
-			"At the feeder"},
-		{"nothing but a code", Observation{Location: "1234 Sparrow Lane", BreedingCode: "S Singing Bird"},
-			"S Singing Bird"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := tc.o.Description(locationBlocklist{"Sparrow Lane"}); got != tc.want {
-				t.Errorf("Description() = %q, want %q", got, tc.want)
-			}
-		})
-	}
-}
-
-// The export is free text; the only markup in a description is the line breaks
-// this program puts there.
-func TestObservationDescriptionEscapesExportText(t *testing.T) {
-	o := Observation{
-		Location:     "Smith & Sons Preserve",
-		County:       "Washtenaw",
-		BreedingCode: "P Pair <in> Suitable Habitat",
-		Details:      `Chased off a Cooper's Hawk & a "crow"`,
-	}
-	want := "P Pair &lt;in&gt; Suitable Habitat<br>" +
-		"Smith &amp; Sons Preserve, Washtenaw<br><br>" +
-		"Chased off a Cooper&#39;s Hawk &amp; a &#34;crow&#34;"
-	if got := o.Description(nil); got != want {
-		t.Errorf("Description() = %q, want %q", got, want)
-	}
-}
-
-// An eBird note is multi-line free text, and the description is HTML: without
-// converting the breaks, a note written as paragraphs renders as one long line.
-func TestObservationDescriptionKeepsNoteLineBreaks(t *testing.T) {
-	for _, tc := range []struct {
-		name    string
-		details string
-		want    string
-	}{
-		{"single break", "Heard first.\nSeen later.", "Heard first.<br>Seen later."},
-		{"blank line", "Heard first.\n\nSeen later.", "Heard first.<br><br>Seen later."},
-		{"crlf", "Heard first.\r\nSeen later.", "Heard first.<br>Seen later."},
-		{"bare cr", "Heard first.\rSeen later.", "Heard first.<br>Seen later."},
-		// The break is markup this program adds; the text around it is still
-		// escaped.
-		{"escaped either side", "a & b\nc < d", "a &amp; b<br>c &lt; d"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			o := Observation{Location: "Gallup Park", Details: tc.details}
-			want := "Gallup Park<br><br>" + tc.want
-			if got := o.Description(nil); got != want {
-				t.Errorf("Description() = %q, want %q", got, want)
-			}
-		})
-	}
-}
-
 func TestParseObservationsTimeOfDay(t *testing.T) {
 	loc := mustLocation(t, "America/Detroit")
 	csv := sampleHeader +
@@ -361,40 +271,6 @@ func TestParseObservationsFailsWhenTheFinderIsBroken(t *testing.T) {
 	_, err := parseObservations(strings.NewReader(csv), &staticZoneFinder{err: broken}, time.UTC)
 	if !errors.Is(err, broken) {
 		t.Fatalf("parseObservations error = %v, want it to report %v", err, broken)
-	}
-}
-
-func TestCountLabel(t *testing.T) {
-	for _, tc := range []struct {
-		count string
-		want  string
-	}{
-		{"1", "1"},
-		{"14", "14"},
-		{"X", "multiple"},
-		{"x", "multiple"},
-		{" X ", "multiple"},
-		{"", "multiple"},
-	} {
-		o := Observation{CommonName: "American Robin", Count: tc.count}
-		if got := o.CountLabel(); got != tc.want {
-			t.Errorf("CountLabel(%q) = %q, want %q", tc.count, got, tc.want)
-		}
-		if got, want := o.Title(), "American Robin ("+tc.want+")"; got != want {
-			t.Errorf("Title() with count %q = %q, want %q", tc.count, got, want)
-		}
-	}
-}
-
-func TestObservationGUIDAndURL(t *testing.T) {
-	// With no scientific name, the common name identifies the species.
-	o := Observation{SubmissionID: "S1", CommonName: "American Robin"}
-	if got, want := o.GUID(), "ebird:S1:American Robin"; got != want {
-		t.Errorf("GUID() = %q, want %q", got, want)
-	}
-	// With no submission ID there's no checklist to link to.
-	if got := (Observation{CommonName: "American Robin"}).ChecklistURL(); got != "" {
-		t.Errorf("ChecklistURL() = %q, want empty", got)
 	}
 }
 

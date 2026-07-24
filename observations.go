@@ -4,7 +4,6 @@ import (
 	"encoding/csv"
 	"errors"
 	"fmt"
-	"html"
 	"io"
 	"slices"
 	"strconv"
@@ -24,15 +23,6 @@ const (
 // that day's timed sightings; midnight would make it the oldest instant of the
 // day, so a reader would file it below every sighting it was recorded alongside.
 const noonHour = 12
-
-// countMultiple is the Count value eBird uses for "present, but not counted".
-const countMultiple = "X"
-
-// multipleLabel is how countMultiple is rendered in an item title.
-const multipleLabel = "multiple"
-
-// checklistURLPrefix is the public eBird URL for a checklist, by submission ID.
-const checklistURLPrefix = "https://ebird.org/checklist/"
 
 // Columns read from the export; the rest (protocol, duration, checklist
 // comments, …) are ignored. Only requiredColumns must be present, so an export
@@ -89,124 +79,6 @@ type Observation struct {
 	// resolved to a time zone, so the configured fallback was used instead. The
 	// caller reports how many rows this happened to.
 	ZoneFallback bool
-}
-
-// Title is the observation's feed item title: the common name followed by the
-// count in parentheses. An uncounted ("X") or missing count reads as
-// "multiple".
-func (o Observation) Title() string {
-	return fmt.Sprintf("%s (%s)", o.CommonName, o.CountLabel())
-}
-
-// CountLabel renders the raw eBird count for display.
-func (o Observation) CountLabel() string {
-	c := strings.TrimSpace(o.Count)
-	if c == "" || strings.EqualFold(c, countMultiple) {
-		return multipleLabel
-	}
-	return c
-}
-
-// ChecklistURL is the public eBird page for the checklist this observation came
-// from, or "" if the export carried no submission ID.
-func (o Observation) ChecklistURL() string {
-	if o.SubmissionID == "" {
-		return ""
-	}
-	return checklistURLPrefix + o.SubmissionID
-}
-
-// Description is the feed item's description, as HTML:
-//
-//	Breeding Code<br>
-//	Location, County, State/Province<br>
-//	<br>
-//	Observation Details
-//
-// Either the breeding code or the observer's notes may be absent; whatever is
-// missing is left out, along with the line break that would have followed it.
-//
-// Text from the export is free-form, so it goes through escapeLines: the only
-// markup in the result is this function's own, plus the line breaks a
-// multi-line note asked for.
-func (o Observation) Description(blocklist locationBlocklist) string {
-	lines := make([]string, 0, 2)
-	if code := strings.TrimSpace(o.BreedingCode); code != "" {
-		lines = append(lines, escapeLines(code))
-	}
-	if where := o.locationText(blocklist); where != "" {
-		lines = append(lines, escapeLines(where))
-	}
-	desc := strings.Join(lines, "<br>")
-
-	details := escapeLines(strings.TrimSpace(o.Details))
-	if details == "" {
-		return desc
-	}
-	if desc == "" {
-		return details
-	}
-	return desc + "<br><br>" + details
-}
-
-// escapeLines escapes export text for HTML and carries its line breaks over.
-// An eBird note is multi-line free text, so without this a note written as
-// paragraphs would render as one run-on line.
-func escapeLines(s string) string {
-	s = strings.ReplaceAll(s, "\r\n", "\n")
-	s = strings.ReplaceAll(s, "\r", "\n")
-	return strings.ReplaceAll(html.EscapeString(s), "\n", "<br>")
-}
-
-// locationText is where the sighting happened, as
-// "Location, County, State/Province" — e.g. "Arcadia Marsh, Manistee, MI, US".
-//
-// A site the blocklist matches is left out entirely, leaving "County,
-// State/Province" — eBird location names are free text and a personal location
-// is often a home address. Empty fields are skipped, so an export missing one
-// doesn't produce a stray comma.
-func (o Observation) locationText(blocklist locationBlocklist) string {
-	parts := make([]string, 0, 3)
-	if o.Location != "" && !blocklist.hides(o.Location) {
-		parts = append(parts, o.Location)
-	}
-	if o.County != "" {
-		parts = append(parts, o.County)
-	}
-	if region := formatRegion(o.StateProvince); region != "" {
-		parts = append(parts, region)
-	}
-	return strings.Join(parts, ", ")
-}
-
-// formatRegion renders eBird's State/Province code for a human. The export
-// writes it largest-unit-first and hyphenated ("US-MI"), which reads backwards
-// next to the "Location, County" that precedes it; reversing the parts continues
-// narrowest-to-widest ("MI, US").
-//
-// A code with no hyphen comes through unchanged, as do empty segments in a
-// malformed one.
-func formatRegion(code string) string {
-	segments := strings.Split(strings.TrimSpace(code), "-")
-	slices.Reverse(segments)
-	parts := make([]string, 0, len(segments))
-	for _, s := range segments {
-		if s = strings.TrimSpace(s); s != "" {
-			parts = append(parts, s)
-		}
-	}
-	return strings.Join(parts, ", ")
-}
-
-// GUID is a stable, unique identifier for the observation. It is not a URL: a
-// checklist's URL is shared by every species on that checklist, so the species
-// has to be part of the identity.
-func (o Observation) GUID() string {
-	name := o.ScientificName
-	if name == "" {
-		name = o.CommonName
-	}
-	return fmt.Sprintf("ebird:%s:%s", o.SubmissionID, name)
 }
 
 // parseObservations reads an eBird "MyEBirdData.csv" export and returns its
