@@ -117,8 +117,8 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	}
 }
 
-// The breeding code and the observer's notes are absent from most rows, so
-// every combination of present and missing has to read correctly.
+// Either the breeding code or the observer's notes may be absent, so every
+// combination of present and missing has to read correctly.
 func TestObservationDescriptionSections(t *testing.T) {
 	base := Observation{Location: "Gallup Park", County: "Washtenaw", StateProvince: "US-MI"}
 	const where = "Gallup Park, Washtenaw, MI, US"

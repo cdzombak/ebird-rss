@@ -71,10 +71,10 @@ type Observation struct {
 	County        string
 	StateProvince string
 	// BreedingCode is eBird's breeding-behavior code and its label, as the export
-	// writes them together — "S Singing Bird". Empty for most observations.
+	// writes them together — "S Singing Bird".
 	BreedingCode string
 	// Details is the observer's free-text note about this species on this
-	// checklist. Empty for most observations.
+	// checklist.
 	Details string
 	// ObservedAt is the checklist's date and time, in the time zone of the place
 	// it was recorded. When the export carries no time, it is midnight there and
@@ -119,8 +119,8 @@ func (o Observation) ChecklistURL() string {
 //	<br>
 //	Observation Details
 //
-// The breeding code and the observer's notes are absent from most rows; whatever
-// is missing is left out, along with the line break that would have followed it.
+// Either the breeding code or the observer's notes may be absent; whatever is
+// missing is left out, along with the line break that would have followed it.
 //
 // Text from the export is free-form, so it's escaped here: the only markup in
 // the result is this function's own.
