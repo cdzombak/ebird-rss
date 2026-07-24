@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"sync"
 	"time"
 
 	"github.com/ringsaturn/tzf"
@@ -32,13 +31,17 @@ var errNoZoneForCoords = errors.New("no time zone covers those coordinates")
 // costs roughly 300ms, and a run that never resolves a coordinate (an export
 // with no usable ones, or a test that injects a different finder) shouldn't pay
 // for it.
+//
+// It is not safe for concurrent use; the parser resolves zones one row at a
+// time.
 type tzfZoneFinder struct {
-	once sync.Once
-	f    tzf.F
-	err  error
+	loaded bool
+	f      tzf.F
+	err    error
 
-	// locations memoizes time.LoadLocation, which re-reads the zoneinfo data
-	// on every call.
+	// locations memoizes time.LoadLocation, which re-reads the zoneinfo data on
+	// every call — 13µs against 200ns for the polygon lookup itself, so this is
+	// the memo that matters.
 	locations map[string]*time.Location
 }
 
@@ -50,7 +53,8 @@ func newTZFZoneFinder() *tzfZoneFinder {
 // zone covers, which in practice means coordinates that aren't on Earth: the
 // boundary data includes the nautical zones over open ocean.
 func (t *tzfZoneFinder) zoneAt(lat, lon float64) (*time.Location, error) {
-	t.once.Do(func() {
+	if !t.loaded {
+		t.loaded = true
 		// The full-precision polygons. The cheaper NewDefaultFinder trades
 		// accuracy near boundaries for a faster load, which is the wrong trade
 		// for a program that runs once per feed generation.
@@ -58,7 +62,7 @@ func (t *tzfZoneFinder) zoneAt(lat, lon float64) (*time.Location, error) {
 		if t.err != nil {
 			t.err = fmt.Errorf("loading time zone boundaries: %w", t.err)
 		}
-	})
+	}
 	if t.err != nil {
 		return nil, t.err
 	}
