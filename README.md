@@ -3,13 +3,12 @@
 A small Go program that turns an [eBird](https://ebird.org) CSV export into an
 RSS, Atom, or JSON feed of your most recent bird sightings.
 
-Each item's title is the species' common name and count — "American Robin (3)",
-or "American Robin (multiple)" when eBird recorded the species as present but
-uncounted (`X`) — its description is where you saw it, along with the breeding
-code and your notes when eBird has them, and its date is the
-observation's date and time, in the time zone of the place you were birding. Each
-item links to the eBird checklist the sighting came from. The feed is written atomically, so a web server never serves
-a half-written file.
+Each item's title is the species' common name and count, its description is
+where you saw it, along with the breeding code and your notes (if any), and
+its date is the observation's date and time, in the time zone of the place
+you were birding. Each item links to the eBird checklist the sighting came from.
+
+The feed is written atomically, so a web server never serves a half-written file.
 
 The program reads only the export file on disk; it makes no network requests and
 needs no eBird credentials.
@@ -85,11 +84,11 @@ count: 20
 format: rss
 fallback_timezone: "America/Detroit"
 location_blocklist:
-  - "Home"
+  - "Sparrow Lane"
 feed:
   title: "Chris Dzombak • Bird Sightings"
   description: "Birds I've recently seen and logged to eBird."
-  link: "https://ebird.org/profile/MTIzNDU2"
+  link: "https://ebird.org/profile/MjA4NjIyNA"
   feed_url: "https://www.dzombak.com/feeds/birds.rss.xml"
   author: "Chris Dzombak"
   language: "en-US"
@@ -116,18 +115,15 @@ Unknown keys are rejected, so a typo fails loudly instead of being ignored.
 ### About time zones
 
 eBird's export records a local date and a local time of day with no zone or
-offset. Rather than assume every sighting shares one zone, the program resolves
-each observation's coordinates — which the export includes on every row — to the
-time zone in effect there, so a checklist from a trip is dated correctly relative
-to one from home. Michigan and Florida each span two zones, so this matters even
-without leaving your state.
+offset. This program resolves each observation's coordinates — which the export
+includes on every row — to the time zone in effect there, so a checklist from a
+trip is dated correctly relative to one from home.
 
 The lookup is entirely offline: the
 [timezone-boundary-builder](https://github.com/evansiroky/timezone-boundary-builder)
 polygons are compiled into the binary via
 [`ringsaturn/tzf`](https://github.com/ringsaturn/tzf), which is what makes the
-binary ~33 MB. Loading them costs about 300ms once per run, and each distinct
-location is looked up only once.
+binary ~33 MB. Loading them costs about 300ms once per run.
 
 `fallback_timezone` covers the rows that lookup can't place: a row with no
 coordinates, or coordinates that land nowhere. When any sighting falls back, the
@@ -144,7 +140,7 @@ Each item's description says where the sighting happened, as
 `Location, County, State/Province` — for example
 `Gallup Park, Washtenaw, MI, US`.
 
-When the export has them, eBird's breeding code goes above that line and your
+When the observation has them, eBird's breeding code goes above that line and your
 note on the sighting goes below it:
 
 ```
@@ -153,11 +149,6 @@ Gallup Park, Washtenaw, MI, US
 
 Heard from the boardwalk, never seen.
 ```
-
-Both columns are empty on most rows; whatever is missing is left out, along with
-the line break that would have followed it. The description is HTML, and text
-from the export is escaped, so a note containing `&` or `<` reads as you wrote
-it.
 
 ### Hiding locations
 
@@ -181,10 +172,6 @@ every location and silently hide them all.
 The blocklist is checked against the `Location` column only. Your note on a
 sighting (`Observation Details`) is published as written, so a note that names
 the road you live on says so even when the location itself is hidden.
-
-**This only controls what this feed publishes.** Items still link to the eBird
-checklist, and that page is public — check what eBird itself shows for your
-personal locations before publishing a feed that includes them.
 
 ## Usage
 
