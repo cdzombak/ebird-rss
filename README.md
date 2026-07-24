@@ -64,11 +64,11 @@ cp out/ebird-rss $INSTALL_DIR
 
 Multi-architecture images are published to [Docker Hub](https://hub.docker.com/r/cdzombak/ebird-rss) and [GHCR](https://github.com/cdzombak/ebird-rss/pkgs/container/ebird-rss), built `FROM scratch` (just the binary). Both the IANA time zone database and the time zone boundary polygons are compiled into the binary, so zone lookup works in the container with no data files to mount.
 
-Mount the directory holding your export and config, plus a writable directory for the feed:
+Mount the directory holding your export and config read-only, plus a writable directory for the feed:
 
 ```shell
 docker run --rm \
-  -v /home/cdzombak/ebird:/data \
+  -v /home/cdzombak/ebird:/data:ro \
   -v /var/www/feeds:/out \
   cdzombak/ebird-rss:1 \
   -in-file /data/MyEBirdData.csv \
