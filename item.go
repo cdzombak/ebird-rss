@@ -18,23 +18,59 @@ const countMultiple = "X"
 // multipleLabel is how countMultiple is rendered in an item title.
 const multipleLabel = "multiple"
 
+// protocolCasual is eBird's "casual observation" protocol, as the export names
+// it once the portal prefix ("eBird - ") is stripped. A sighting logged this
+// way — through Merlin, say — carries no count at all, which the export writes
+// as countMultiple; see CountLabel.
+const protocolCasual = "Casual Observation"
+
 // checklistURLPrefix is the public eBird URL for a checklist, by submission ID.
 const checklistURLPrefix = "https://ebird.org/checklist/"
 
-// Title is the observation's feed item title: the common name followed by the
-// count in parentheses. An uncounted ("X") or missing count reads as
-// "multiple".
+// Title is the observation's feed item title: the common name, followed by the
+// count in parentheses when there is one to show. A sighting CountLabel has
+// nothing to say about is titled by name alone.
 func (o Observation) Title() string {
-	return fmt.Sprintf("%s (%s)", o.CommonName, o.CountLabel())
+	label := o.CountLabel()
+	if label == "" {
+		return o.CommonName
+	}
+	return fmt.Sprintf("%s (%s)", o.CommonName, label)
 }
 
-// CountLabel renders the raw eBird count for display.
+// CountLabel renders the raw eBird count for display, or "" when the export's
+// count says nothing worth publishing.
+//
+// On a count the observer kept — a stationary or traveling count, or anything
+// else deliberate — an uncounted ("X") or missing value means the birds were
+// there in some number nobody tallied, which reads as "multiple". A casual
+// observation carries no count in the first place: recording one bird through
+// Merlin writes the same "X", so reporting "multiple" there would invent a
+// flock out of a single bird. Those get no count unless the observer entered an
+// actual number.
 func (o Observation) CountLabel() string {
 	c := strings.TrimSpace(o.Count)
-	if c == "" || strings.EqualFold(c, countMultiple) {
-		return multipleLabel
+	if c != "" && !strings.EqualFold(c, countMultiple) {
+		return c
 	}
-	return c
+	if o.isCasualObservation() {
+		return ""
+	}
+	return multipleLabel
+}
+
+// isCasualObservation reports whether this sighting came from eBird's "casual
+// observation" protocol.
+//
+// The export qualifies the protocol with the portal that recorded it — "eBird -
+// Casual Observation" — so the prefix is dropped before comparing; a value
+// carrying no such prefix is compared whole.
+func (o Observation) isCasualObservation() bool {
+	p := strings.TrimSpace(o.Protocol)
+	if _, after, found := strings.Cut(p, " - "); found {
+		p = after
+	}
+	return strings.EqualFold(strings.TrimSpace(p), protocolCasual)
 }
 
 // ChecklistURL is the public eBird page for the checklist this observation came

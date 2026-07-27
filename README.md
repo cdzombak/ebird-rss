@@ -137,6 +137,17 @@ Checklists submitted without a time of day (eBird's "casual observation"
 protocol, among others) are dated to noon local time on the day observed, so
 they sort among that day's other sightings rather than below all of them.
 
+### Item titles
+
+Each item's title is the species' common name followed by the count — for
+example `American Robin (14)`.
+
+eBird writes `X` for a sighting the observer didn't count, which reads as
+`American Robin (multiple)`. Casual observations are the exception: logging a
+bird through Merlin records an `X` whether you saw one or fifty, so calling that
+"multiple" would invent a flock. A casual observation gets a count only when
+you entered a number; otherwise the title is just `American Robin`.
+
 ### Item descriptions
 
 Each item's description says where the sighting happened, as

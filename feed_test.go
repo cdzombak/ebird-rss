@@ -34,6 +34,7 @@ func sampleObservations() []Observation {
 			CommonName:     "American Robin",
 			ScientificName: "Turdus migratorius",
 			Count:          "3",
+			Protocol:       "eBird - Stationary Count",
 			Location:       "Lincoln Twp. Park",
 			County:         "Berrien",
 			StateProvince:  "US-MI",
@@ -42,11 +43,13 @@ func sampleObservations() []Observation {
 			ObservedAt:     time.Date(2026, 4, 26, 9, 36, 0, 0, time.UTC),
 		},
 		{
-			// Uncounted, and with no time of day: noon, as the parser dates it.
+			// Uncounted on a protocol where the observer was counting, and with
+			// no time of day: noon, as the parser dates it.
 			SubmissionID:   "S1",
 			CommonName:     "Canada Goose",
 			ScientificName: "Branta canadensis",
 			Count:          "X",
+			Protocol:       "eBird - Traveling Count",
 			Location:       "Grand Mere",
 			County:         "Berrien",
 			StateProvince:  "US-MI",
@@ -106,6 +109,35 @@ func TestBuildFeed(t *testing.T) {
 	// The feed's update time is the newest observation's.
 	if feed.UpdatedParsed == nil || !feed.UpdatedParsed.Equal(time.Date(2026, 4, 26, 9, 36, 0, 0, time.UTC)) {
 		t.Errorf("updated = %v, want the newest observation time", feed.UpdatedParsed)
+	}
+}
+
+// A casual observation eBird wrote as "X" says nothing about how many birds
+// there were, so its item is titled by species alone — all the way through to
+// the rendered feed.
+func TestBuildFeedOmitsCasualObservationCount(t *testing.T) {
+	obs := []Observation{{
+		SubmissionID:   "S1",
+		CommonName:     "Sandhill Crane",
+		ScientificName: "Antigone canadensis",
+		Count:          "X",
+		Protocol:       "eBird - Casual Observation",
+		County:         "Berrien",
+		StateProvince:  "US-MI",
+		ObservedAt:     time.Date(2026, 4, 26, 9, 36, 0, 0, time.UTC),
+	}}
+
+	feed := buildFeed(obs, sampleConfig())
+	if got, want := feed.Items[0].Title, "Sandhill Crane"; got != want {
+		t.Errorf("item title = %q, want %q", got, want)
+	}
+	out, err := renderFeed(feed, "rss")
+	if err != nil {
+		t.Fatalf("renderFeed: %v", err)
+	}
+	if s := string(out); !strings.Contains(s, "<title>Sandhill Crane</title>") ||
+		strings.Contains(s, "multiple") {
+		t.Errorf("RSS output should title the item by species alone:\n%s", s)
 	}
 }
 

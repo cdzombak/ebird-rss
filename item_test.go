@@ -166,24 +166,89 @@ func TestFormatRegion(t *testing.T) {
 	}
 }
 
+// On a protocol where the observer was counting, an uncounted or missing value
+// still reads as "multiple".
 func TestCountLabel(t *testing.T) {
-	for _, tc := range []struct {
-		count string
-		want  string
-	}{
-		{"1", "1"},
-		{"14", "14"},
-		{"X", "multiple"},
-		{"x", "multiple"},
-		{" X ", "multiple"},
-		{"", "multiple"},
+	for _, protocol := range []string{
+		"eBird - Traveling Count",
+		"eBird - Stationary Count",
+		// An export that names some other protocol, or none at all, is read the
+		// same way: only a casual observation is treated as uncounted.
+		"eBird - Area Count",
+		"eBird - Historical",
+		"",
 	} {
-		o := Observation{CommonName: "American Robin", Count: tc.count}
+		for _, tc := range []struct {
+			count string
+			want  string
+		}{
+			{"1", "1"},
+			{"14", "14"},
+			{"X", "multiple"},
+			{"x", "multiple"},
+			{" X ", "multiple"},
+			{"", "multiple"},
+		} {
+			o := Observation{CommonName: "American Robin", Count: tc.count, Protocol: protocol}
+			if got := o.CountLabel(); got != tc.want {
+				t.Errorf("protocol %q: CountLabel(%q) = %q, want %q", protocol, tc.count, got, tc.want)
+			}
+			if got, want := o.Title(), "American Robin ("+tc.want+")"; got != want {
+				t.Errorf("protocol %q: Title() with count %q = %q, want %q", protocol, tc.count, got, want)
+			}
+		}
+	}
+}
+
+// A casual observation — Merlin, typically — writes "X" whether one bird was
+// seen or fifty, so "multiple" would be an invention. Only a number the
+// observer actually entered is published.
+func TestCountLabelCasualObservation(t *testing.T) {
+	for _, tc := range []struct {
+		count     string
+		want      string
+		wantTitle string
+	}{
+		{"1", "1", "American Robin (1)"},
+		{"14", "14", "American Robin (14)"},
+		{"X", "", "American Robin"},
+		{"x", "", "American Robin"},
+		{" X ", "", "American Robin"},
+		{"", "", "American Robin"},
+	} {
+		o := Observation{CommonName: "American Robin", Count: tc.count, Protocol: "eBird - Casual Observation"}
 		if got := o.CountLabel(); got != tc.want {
 			t.Errorf("CountLabel(%q) = %q, want %q", tc.count, got, tc.want)
 		}
-		if got, want := o.Title(), "American Robin ("+tc.want+")"; got != want {
-			t.Errorf("Title() with count %q = %q, want %q", tc.count, got, want)
+		if got := o.Title(); got != tc.wantTitle {
+			t.Errorf("Title() with count %q = %q, want %q", tc.count, got, tc.wantTitle)
+		}
+	}
+}
+
+// The protocol is free text in the export; it's matched with the portal prefix
+// stripped, and without regard to case or surrounding space.
+func TestIsCasualObservation(t *testing.T) {
+	for _, tc := range []struct {
+		protocol string
+		want     bool
+	}{
+		{"eBird - Casual Observation", true},
+		{" eBird  -  Casual Observation ", true},
+		{"ebird - casual observation", true},
+		{"eBird - CASUAL OBSERVATION", true},
+		// No portal prefix: compared whole.
+		{"Casual Observation", true},
+		{"eBird - Traveling Count", false},
+		{"eBird - Stationary Count", false},
+		{"eBird - Nocturnal Flight Call Count", false},
+		{"", false},
+		// Near misses stay counted, rather than silently losing their counts.
+		{"eBird - Casual Observation Count", false},
+		{"Casual", false},
+	} {
+		if got := (Observation{Protocol: tc.protocol}).isCasualObservation(); got != tc.want {
+			t.Errorf("isCasualObservation(%q) = %v, want %v", tc.protocol, got, tc.want)
 		}
 	}
 }
