@@ -51,7 +51,7 @@ func TestGenerateFeed(t *testing.T) {
 	}
 	s := readFile(t, out)
 
-	// The three most recent of the sample export's five observations.
+	// The three most recent of the sample export's six observations.
 	for _, want := range []string{
 		"<title>American Robin (14)</title>",
 		"<title>Canada Goose (2)</title>",
@@ -63,7 +63,7 @@ func TestGenerateFeed(t *testing.T) {
 		}
 	}
 	// Older observations are excluded by the count.
-	for _, dontWant := range []string{"Wood Duck", "Northern Flicker"} {
+	for _, dontWant := range []string{"Wood Duck", "Sandhill Crane", "Northern Flicker"} {
 		if strings.Contains(s, dontWant) {
 			t.Errorf("output should not include %q (beyond count=3)\n---\n%s", dontWant, s)
 		}
@@ -142,9 +142,9 @@ func TestRunWithoutConfig(t *testing.T) {
 	if !strings.Contains(s, "<title>"+defaultFeedTitle+"</title>") {
 		t.Errorf("feed title is not the default %q:\n%s", defaultFeedTitle, s)
 	}
-	// The sample export's five observations are under the default count.
-	if n := strings.Count(s, "<item>"); n != 5 {
-		t.Errorf("got %d items, want all 5", n)
+	// The sample export's six observations are under the default count.
+	if n := strings.Count(s, "<item>"); n != 6 {
+		t.Errorf("got %d items, want all 6", n)
 	}
 }
 

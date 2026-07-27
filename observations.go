@@ -24,9 +24,9 @@ const (
 // day, so a reader would file it below every sighting it was recorded alongside.
 const noonHour = 12
 
-// Columns read from the export; the rest (protocol, duration, checklist
-// comments, …) are ignored. Only requiredColumns must be present, so an export
-// that gains or loses other columns still parses.
+// Columns read from the export; the rest (duration, checklist comments, …) are
+// ignored. Only requiredColumns must be present, so an export that gains or
+// loses other columns still parses.
 const (
 	colSubmissionID       = "Submission ID"
 	colCommonName         = "Common Name"
@@ -39,6 +39,7 @@ const (
 	colLongitude          = "Longitude"
 	colDate               = "Date"
 	colTime               = "Time"
+	colProtocol           = "Protocol"
 	colBreedingCode       = "Breeding Code"
 	colObservationDetails = "Observation Details"
 )
@@ -59,6 +60,11 @@ type Observation struct {
 	// Count is the raw eBird value: a number, or "X" for "present, but not
 	// counted". It may be empty if the export omits it.
 	Count string
+	// Protocol is how the checklist was recorded, as the export writes it —
+	// "eBird - Traveling Count", "eBird - Casual Observation", … It decides
+	// whether an uncounted sighting is worth reporting a count for at all; see
+	// CountLabel.
+	Protocol string
 	// Location, County, and StateProvince describe where the sighting happened.
 	// Location is whatever the observer named the site, which for a personal
 	// location can be a home address; see locationBlocklist.
@@ -183,6 +189,7 @@ func observationFromRecord(rec []string, cols map[string]int, finder zoneFinder,
 		CommonName:     field(colCommonName),
 		ScientificName: field(colScientificName),
 		Count:          field(colCount),
+		Protocol:       field(colProtocol),
 		Location:       field(colLocation),
 		County:         field(colCounty),
 		StateProvince:  field(colStateProvince),

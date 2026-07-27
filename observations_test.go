@@ -46,22 +46,39 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parseObservations: %v", err)
 	}
-	if len(obs) != 5 {
-		t.Fatalf("got %d observations, want 5", len(obs))
+	if len(obs) != 6 {
+		t.Fatalf("got %d observations, want 6", len(obs))
 	}
 
 	// Sorted newest first; the two species on checklist S327776301 share a
-	// timestamp and are broken apart by common name.
+	// timestamp and are broken apart by common name. The Wood Duck is a casual
+	// observation eBird wrote as "X", which is no count at all — unlike the
+	// traveling count's "X", which reads as "multiple".
 	wantTitles := []string{
 		"American Robin (14)",
 		"Canada Goose (2)",
 		"Canada Goose (multiple)",
+		"Sandhill Crane (2)",
 		"Northern Flicker (Yellow-shafted) (1)",
-		"Wood Duck (multiple)",
+		"Wood Duck",
 	}
 	for i, want := range wantTitles {
 		if got := obs[i].Title(); got != want {
 			t.Errorf("obs[%d].Title() = %q, want %q", i, got, want)
+		}
+	}
+	// The protocol each of those readings depends on comes from the export.
+	wantProtocols := []string{
+		"eBird - Traveling Count",
+		"eBird - Traveling Count",
+		"eBird - Traveling Count",
+		"eBird - Casual Observation",
+		"eBird - Stationary Count",
+		"eBird - Casual Observation",
+	}
+	for i, want := range wantProtocols {
+		if got := obs[i].Protocol; got != want {
+			t.Errorf("obs[%d].Protocol = %q, want %q", i, got, want)
 		}
 	}
 
@@ -107,6 +124,52 @@ func TestParseObservationsSampleExport(t *testing.T) {
 	last := obs[len(obs)-1]
 	if want := time.Date(2023, 10, 7, 12, 0, 0, 0, loc); !last.ObservedAt.Equal(want) {
 		t.Errorf("timeless observation = %s, want %s", last.ObservedAt, want)
+	}
+}
+
+// The Protocol column decides what an "X" count means: on a stationary or
+// traveling count the birds went untallied ("multiple"), while a casual
+// observation carries no count at all — Merlin writes "X" for a single bird —
+// so nothing is published unless the observer entered a number.
+func TestParseObservationsCountByProtocol(t *testing.T) {
+	csv := sampleHeader +
+		"S1,Traveling X,Aves ambulans,1,X,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-04-25,09:00 AM,eBird - Traveling Count,,0,,,1\n" +
+		"S2,Stationary X,Aves stans,2,X,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-04-25,09:01 AM,eBird - Stationary Count,,0,,,1\n" +
+		"S3,Casual X,Aves fortuita,3,X,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-04-25,09:02 AM,eBird - Casual Observation,,0,,,1\n" +
+		"S4,Casual Counted,Aves numerata,4,3,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-04-25,09:03 AM,eBird - Casual Observation,,0,,,1\n" +
+		// A casual observation whose Count column is empty is equally uncounted.
+		"S5,Casual Blank,Aves vacua,5,,US-MI,Berrien,L1,Lincoln Twp. Park,0,0,2026-04-25,09:04 AM,eBird - Casual Observation,,0,,,1\n"
+
+	obs := mustParseObservations(t, csv, time.UTC)
+	wantTitles := map[string]string{
+		"Traveling X":    "Traveling X (multiple)",
+		"Stationary X":   "Stationary X (multiple)",
+		"Casual X":       "Casual X",
+		"Casual Counted": "Casual Counted (3)",
+		"Casual Blank":   "Casual Blank",
+	}
+	if len(obs) != len(wantTitles) {
+		t.Fatalf("got %d observations, want %d", len(obs), len(wantTitles))
+	}
+	for _, o := range obs {
+		if got, want := o.Title(), wantTitles[o.CommonName]; got != want {
+			t.Errorf("%s: Title() = %q, want %q", o.CommonName, got, want)
+		}
+	}
+}
+
+// Protocol isn't a required column. An export without one keeps the old
+// reading — "X" is "multiple" — rather than dropping every uncounted sighting's
+// count.
+func TestParseObservationsWithoutProtocolColumn(t *testing.T) {
+	csv := "Common Name,Count,Date\nAmerican Robin,X,2026-04-25\n"
+
+	obs := mustParseObservations(t, csv, time.UTC)
+	if got, want := obs[0].Protocol, ""; got != want {
+		t.Errorf("Protocol = %q, want %q", got, want)
+	}
+	if got, want := obs[0].Title(), "American Robin (multiple)"; got != want {
+		t.Errorf("Title() = %q, want %q", got, want)
 	}
 }
 
