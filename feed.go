@@ -46,8 +46,8 @@ func buildFeed(obs []Observation, fc feedConfig) *gofeed.Feed {
 		desc := o.Description(fc.LocationBlocklist)
 		item := &gofeed.Item{
 			Title:           o.Title(),
-			Link:            o.ChecklistURL(),
-			GUID:            o.GUID(),
+			Link:            o.ChecklistURL(fc.LocationBlocklist),
+			GUID:            o.GUID(fc.LocationBlocklist),
 			Description:     desc,
 			Content:         desc,
 			Published:       observedAt.Format(time.RFC3339),

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"html"
 	"slices"
@@ -75,11 +77,22 @@ func (o Observation) isCasualObservation() bool {
 
 // ChecklistURL is the public eBird page for the checklist this observation came
 // from, or "" if the export carried no submission ID.
-func (o Observation) ChecklistURL() string {
-	if o.SubmissionID == "" {
+//
+// A checklist at a blocklisted location is left unlinked entirely: the
+// checklist page shows the location's exact address, and feed readers fetch a
+// link to generate a preview (its OpenGraph data includes that same address)
+// whether or not a person ever clicks it.
+func (o Observation) ChecklistURL(blocklist locationBlocklist) string {
+	if o.SubmissionID == "" || o.isPrivateLocation(blocklist) {
 		return ""
 	}
 	return checklistURLPrefix + o.SubmissionID
+}
+
+// isPrivateLocation reports whether this observation's location is one the
+// blocklist hides.
+func (o Observation) isPrivateLocation(blocklist locationBlocklist) bool {
+	return blocklist.hides(o.Location)
 }
 
 // Description is the feed item's description, as HTML:
@@ -133,7 +146,7 @@ func escapeLines(s string) string {
 // doesn't produce a stray comma.
 func (o Observation) locationText(blocklist locationBlocklist) string {
 	parts := make([]string, 0, 3)
-	if o.Location != "" && !blocklist.hides(o.Location) {
+	if o.Location != "" && !o.isPrivateLocation(blocklist) {
 		parts = append(parts, o.Location)
 	}
 	if o.County != "" {
@@ -167,10 +180,27 @@ func formatRegion(code string) string {
 // GUID is a stable, unique identifier for the observation. It is not a URL: a
 // checklist's URL is shared by every species on that checklist, so the species
 // has to be part of the identity.
-func (o Observation) GUID() string {
+//
+// For a checklist at a blocklisted location, the submission ID is replaced by
+// a one-way hash of itself: the ID is a private detail once it can be turned
+// into that checklist's page (and its address), same as the location name
+// itself, even though nothing here renders it as a link.
+func (o Observation) GUID(blocklist locationBlocklist) string {
 	name := o.ScientificName
 	if name == "" {
 		name = o.CommonName
 	}
-	return fmt.Sprintf("ebird:%s:%s", o.SubmissionID, name)
+	id := o.SubmissionID
+	if o.isPrivateLocation(blocklist) {
+		id = obscureSubmissionID(id)
+	}
+	return fmt.Sprintf("ebird:%s:%s", id, name)
+}
+
+// obscureSubmissionID stands in for a submission ID in a GUID without
+// revealing the ID itself. It's deterministic, so the same checklist keeps the
+// same GUID across runs.
+func obscureSubmissionID(id string) string {
+	sum := sha256.Sum256([]byte(id))
+	return "private-" + hex.EncodeToString(sum[:8])
 }

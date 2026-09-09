@@ -112,10 +112,10 @@ func TestParseObservationsSampleExport(t *testing.T) {
 			"Grand Mere State Park, Stevensville US-MI 42.00341, -86.54192, Berrien, MI, US"; got != want {
 		t.Errorf("obs[1].Description() = %q, want %q", got, want)
 	}
-	if got, want := first.ChecklistURL(), "https://ebird.org/checklist/S327776301"; got != want {
+	if got, want := first.ChecklistURL(nil), "https://ebird.org/checklist/S327776301"; got != want {
 		t.Errorf("ChecklistURL() = %q, want %q", got, want)
 	}
-	if got, want := first.GUID(), "ebird:S327776301:Turdus migratorius"; got != want {
+	if got, want := first.GUID(nil), "ebird:S327776301:Turdus migratorius"; got != want {
 		t.Errorf("GUID() = %q, want %q", got, want)
 	}
 

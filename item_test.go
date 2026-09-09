@@ -1,6 +1,9 @@
 package main
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestObservationDescription(t *testing.T) {
 	public := Observation{Location: "Lincoln Twp. Park", County: "Berrien", StateProvince: "US-MI"}
@@ -256,11 +259,44 @@ func TestIsCasualObservation(t *testing.T) {
 func TestObservationGUIDAndURL(t *testing.T) {
 	// With no scientific name, the common name identifies the species.
 	o := Observation{SubmissionID: "S1", CommonName: "American Robin"}
-	if got, want := o.GUID(), "ebird:S1:American Robin"; got != want {
+	if got, want := o.GUID(nil), "ebird:S1:American Robin"; got != want {
 		t.Errorf("GUID() = %q, want %q", got, want)
 	}
 	// With no submission ID there's no checklist to link to.
-	if got := (Observation{CommonName: "American Robin"}).ChecklistURL(); got != "" {
+	if got := (Observation{CommonName: "American Robin"}).ChecklistURL(nil); got != "" {
 		t.Errorf("ChecklistURL() = %q, want empty", got)
+	}
+}
+
+func TestObservationGUIDAndURLPrivateLocation(t *testing.T) {
+	o := Observation{
+		SubmissionID:   "S1",
+		Location:       "1234 Sparrow Lane, Anytown, MI 99999",
+		ScientificName: "Turdus migratorius",
+	}
+	bl := locationBlocklist{"Sparrow Lane"}
+
+	if got := o.ChecklistURL(bl); got != "" {
+		t.Errorf("ChecklistURL() = %q, want empty for a blocklisted location", got)
+	}
+	// Unblocked, the checklist still links normally.
+	if got, want := o.ChecklistURL(nil), checklistURLPrefix+"S1"; got != want {
+		t.Errorf("ChecklistURL() = %q, want %q", got, want)
+	}
+
+	guid := o.GUID(bl)
+	if strings.Contains(guid, "S1") {
+		t.Errorf("GUID() = %q, should not contain the submission ID for a blocklisted location", guid)
+	}
+	if want := "ebird:S1:Turdus migratorius"; guid == want {
+		t.Errorf("GUID() = %q, want something other than the unblocked form %q", guid, want)
+	}
+	// Deterministic: the same checklist gets the same GUID across runs.
+	if got, want := o.GUID(bl), guid; got != want {
+		t.Errorf("GUID() = %q, want %q (deterministic)", got, want)
+	}
+	// Unblocked, the GUID carries the real submission ID.
+	if got, want := o.GUID(nil), "ebird:S1:Turdus migratorius"; got != want {
+		t.Errorf("GUID() = %q, want %q", got, want)
 	}
 }
