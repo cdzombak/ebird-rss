@@ -3,7 +3,7 @@ module github.com/cdzombak/ebird-rss
 go 1.26
 
 require (
-	github.com/cdzombak/exitcode_go v0.0.2
+	github.com/cdzombak/exitcode_go v1.0.0
 	github.com/mmcdole/gofeed v1.3.0
 	github.com/ringsaturn/tzf v1.2.3
 	gopkg.in/yaml.v3 v3.0.1

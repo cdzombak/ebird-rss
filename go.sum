@@ -2,8 +2,8 @@ github.com/PuerkitoBio/goquery v1.8.0 h1:PJTF7AmFCFKk1N6V6jmKfrNH9tV5pNE6lZMkG0g
 github.com/PuerkitoBio/goquery v1.8.0/go.mod h1:ypIiRMtY7COPGk+I/YbZLbxsxn9g5ejnI2HSMtkjZvI=
 github.com/andybalholm/cascadia v1.3.1 h1:nhxRkql1kdYCc8Snf7D5/D3spOX+dBgjA6u8x004T2c=
 github.com/andybalholm/cascadia v1.3.1/go.mod h1:R4bJ1UQfqADjvDa4P6HZHLh/3OxWWEqc0Sk8XGwHqvA=
-github.com/cdzombak/exitcode_go v0.0.2 h1:+q0tClqg3vEQuFgEpNgQHmVUZX2BXyXitIq1Q00jK78=
-github.com/cdzombak/exitcode_go v0.0.2/go.mod h1:VvYt055HSseEAPgdTHVevUdR1xoBp1tWvIAflepES+U=
+github.com/cdzombak/exitcode_go v1.0.0 h1:0ij5g18nTVXcH0BNcxfUDZe7Zu7COYXCn/HF9mcdv7M=
+github.com/cdzombak/exitcode_go v1.0.0/go.mod h1:QA/4W7udTJO3abha2yx89to0XsUYSHLyDfTKE/gZp0w=
 github.com/cdzombak/gofeed v0.0.0-20250914230300-21507eb34063 h1:8+bZxB9D+t2PsQP3OzV7hGaOJJMBf4orQtwHlkEmjA8=
 github.com/cdzombak/gofeed v0.0.0-20250914230300-21507eb34063/go.mod h1:9TGv2LcJhdXePDzxiuMnukhV2/zb6VtnZt1mS+SjkLE=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
